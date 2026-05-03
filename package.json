@@ -5,7 +5,9 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:backend": "php vendor/bin/phpunit --configuration phpunit.xml",
+    "test:backend:docker": "docker compose run --rm composer install && docker compose run --rm web php /var/www/vendor/bin/phpunit --configuration /var/www/phpunit.xml"
   },
   "devDependencies": {
     "@prettier/plugin-php": "^0.25.0",
