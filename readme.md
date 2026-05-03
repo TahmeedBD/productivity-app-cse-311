@@ -123,6 +123,28 @@ The application is built using a procedural PHP structure.
 - **PHP/HTML/CSS:** Changes are reflected instantly upon browser refresh (mounted as live volumes).
 - **TypeScript:** Requires compilation. Run `npm run build` or `npm run watch` to auto-compile on save.
 
+### Backend Tests
+
+Run the backend test harness with:
+
+```bash
+npm run test:backend
+```
+
+This uses PHPUnit for backend-only tests.
+
+If you are using Docker and do not have PHP installed on your host machine:
+
+Run the backend tests inside Docker with:
+
+```bash
+npm run test:backend:docker
+```
+
+This command installs test dependencies with Composer and runs PHPUnit inside the Docker setup.
+
+For this repo, the Docker path is the better default because it uses the same PHP environment as the app.
+
 ### XAMPP Setup (Alternative)
 
 If you are not using Docker, you can run the project using XAMPP:
