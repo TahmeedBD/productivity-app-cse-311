@@ -1,1 +1,1 @@
-console.log('TypeScript is successfully compiled and running!');
+console.log('Ready.');
