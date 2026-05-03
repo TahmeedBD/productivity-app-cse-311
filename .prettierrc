@@ -1,0 +1,24 @@
+{
+    "plugins": ["@prettier/plugin-php"],
+    "tabWidth": 4,
+    "phpVersion": "8.3",
+    "trailingComma": "all",
+    "semi": true,
+    "singleQuote": true,
+    "overrides": [
+        {
+            "files": [
+                "*.html",
+                "*.css",
+                "*.ts",
+                "*.json",
+                "*.yml",
+                "*.yaml",
+                "*.md"
+            ],
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
+}
