@@ -146,6 +146,25 @@ This command installs test dependencies with Composer and runs PHPUnit inside th
 
 For this repo, the Docker path is the better default because it uses the same PHP environment as the app.
 
+### Temporary Docker Dev Auto-Login
+
+!TODO: Remove this after auth pages are finished.
+
+The Docker setup currently enables a development-only auto-login for faster frontend work before auth pages are finished.
+
+With Docker running, protected routes can automatically seed a dev session using a generated or reused user account.
+
+Current dev identity:
+
+- email: `dev@example.com`
+- username: `Dev User`
+
+To turn this off later, change `DEV_AUTO_LOGIN_ENABLED` in `docker-compose.yml` from `1` to `0` and rebuild:
+
+```bash
+docker compose up -d --build
+```
+
 ### XAMPP Setup (Alternative)
 
 If you are not using Docker, you can run the project using XAMPP:
