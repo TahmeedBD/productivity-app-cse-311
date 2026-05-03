@@ -1,0 +1,8 @@
+/* =============================================================
+   style.css — Entry point. Imports all layers in order.
+   Do NOT put rules here. Use tokens/base/components instead.
+   ============================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import 'tokens.css';
+@import 'base.css';
+@import 'components.css';

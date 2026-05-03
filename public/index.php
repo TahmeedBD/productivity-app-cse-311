@@ -1,5 +1,8 @@
 <?php
-echo '<h1>Welcome to Productivity App</h1>';
-echo '<p>PHP and MySQL setup with Docker is working!</p>';
+$pageTitle = 'Dashboard';
+require_once 'header.php';
 ?>
-<script src="/js/main.js"></script>
+
+
+
+<?php require_once 'footer.php'; ?>
