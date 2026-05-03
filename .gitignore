@@ -2,8 +2,9 @@
 node_modules/
 vendor/
 
-# Environment
+# Environment & local config
 .env
+src/db.php
 
 # Editor directories and files
 .idea/
