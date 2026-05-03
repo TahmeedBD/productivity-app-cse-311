@@ -138,6 +138,7 @@ If you are using Docker and do not have PHP installed on your host machine:
 Run the backend tests inside Docker with:
 
 ```bash
+docker compose up -d --build
 npm run test:backend:docker
 ```
 
