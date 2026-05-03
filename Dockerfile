@@ -1,7 +1,12 @@
 FROM php:8.5-apache
 
-# Install PDO, MySQL, and common testing extensions
-RUN docker-php-ext-install mysqli pdo pdo_mysql mbstring xml
+# Install system packages needed by PHP extensions used in tests
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends libonig-dev libsqlite3-dev libxml2-dev pkg-config \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Install PDO, MySQL, SQLite, and common testing extensions
+RUN docker-php-ext-install mysqli pdo pdo_mysql pdo_sqlite mbstring xml
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
