@@ -73,6 +73,26 @@ function find_latest_time_entry_for_daily_log(
     return $entry === false ? null : $entry;
 }
 
+function list_time_entries_for_daily_log(\PDO $pdo, int $dailyLogId): array
+{
+    $statement = $pdo->prepare(
+        'SELECT id, daily_log_id, start, end, state, notes
+         FROM time_entries
+         WHERE daily_log_id = :daily_log_id
+         ORDER BY start ASC, id ASC',
+    );
+    $statement->execute([':daily_log_id' => $dailyLogId]);
+
+    return $statement->fetchAll(\PDO::FETCH_ASSOC);
+}
+
+function list_today_time_entries(\PDO $pdo, string $userId, string $date): array
+{
+    $dailyLog = get_or_create_daily_log($pdo, $userId, $date);
+
+    return list_time_entries_for_daily_log($pdo, (int) $dailyLog['id']);
+}
+
 function start_time_entry(
     \PDO $pdo,
     string $userId,
