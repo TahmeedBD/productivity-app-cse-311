@@ -2,6 +2,9 @@
 node_modules/
 vendor/
 
+# PHPUnit
+.phpunit.cache/
+
 # Environment & local config
 .env
 src/db.php
