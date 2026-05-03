@@ -8,8 +8,17 @@ services:
     volumes:
       - ./public:/var/www/html
       - ./src:/var/www/src
+      - ./tests:/var/www/tests
+      - ./vendor:/var/www/vendor
+      - ./phpunit.xml:/var/www/phpunit.xml
     depends_on:
       - db
+
+  composer:
+    image: composer:2
+    working_dir: /app
+    volumes:
+      - ./:/app
 
   db:
     image: mysql:8.0

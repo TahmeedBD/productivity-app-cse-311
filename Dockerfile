@@ -1,7 +1,7 @@
 FROM php:8.5-apache
 
-# Install PDO and MySQL extensions
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+# Install PDO, MySQL, and common testing extensions
+RUN docker-php-ext-install mysqli pdo pdo_mysql mbstring xml
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
