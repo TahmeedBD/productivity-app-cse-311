@@ -76,6 +76,6 @@ CREATE TABLE IF NOT EXISTS time_entries (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (daily_log_id) REFERENCES daily_logs(id) ON DELETE CASCADE,
-    FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE SET NULL,
-    FOREIGN KEY (activity_subtype_id) REFERENCES activity_subtypes(id) ON DELETE SET NULL
+    FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE RESTRICT,
+    FOREIGN KEY (activity_subtype_id) REFERENCES activity_subtypes(id) ON DELETE RESTRICT
 );
