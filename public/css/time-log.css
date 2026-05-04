@@ -3,24 +3,15 @@
    ============================================================= */
 
 /* ── Page ──────────────────────────────────────────────────── */
-.time-log-body {
-  background: var(--tl-page-bg, #120d0b);
-}
-
 .time-log-page {
   display: grid;
   gap: var(--space-6);
   padding-bottom: var(--space-8);
 }
 
-/* ── Page heading ───────────────────────────────────────────── */
-.time-log-page-heading {
-  margin-bottom: var(--space-2);
-}
-
 /* ── Hero card ──────────────────────────────────────────────── */
+/* Border/shadow comes from .card-featured; only page-specific overrides here */
 .time-log-hero {
-  border: 1px solid var(--tl-warm-border, #8c6239);
   background: var(--color-surface);
   background-image: radial-gradient(
     ellipse at 50% 50%,
@@ -30,9 +21,6 @@
   border-radius: var(--radius-lg);
   padding: 0;
   overflow: hidden;
-  box-shadow:
-    0 0 0 1px var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35)),
-    var(--shadow-card);
 }
 
 .time-log-hero-body {
@@ -48,7 +36,7 @@
   justify-content: center;
   gap: var(--space-3);
   padding: var(--space-7) var(--space-5);
-  border-right: 1px solid var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+  border-right: 1px solid var(--color-warm-border-soft);
 }
 
 .time-log-timer {
@@ -156,31 +144,19 @@
 }
 
 /* ── Today's Entries section ────────────────────────────────── */
-.time-log-section {
-  display: grid;
-  gap: var(--space-4);
-}
+/* Layout handled by .page-section and .page-section__header (global) */
 
-.time-log-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* Table wrapper */
+/* Table wrapper — background + overflow; border/shadow from .table-wrap--warm */
 .time-log-page .table-wrap {
-  border: 1px solid var(--tl-warm-border, #8c6239);
-  border-radius: var(--radius-lg);
   background: var(--color-surface);
   overflow: hidden;
-  box-shadow: 0 0 0 1px var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
 }
 
 /* Table headers — teal accent color */
 .time-log-table.table th {
   color: var(--color-accent);
   background: var(--color-surface);
-  border-bottom: 1px solid var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+  border-bottom: 1px solid var(--color-warm-border-soft);
   white-space: nowrap;
 }
 
@@ -245,18 +221,13 @@
 }
 
 /* ── Add Past Entry card ─────────────────────────────────────── */
+/* Border/shadow comes from .card-featured; only page-specific overrides here */
 .time-log-add-card {
-  border: 1px solid var(--tl-warm-border, #8c6239);
-  background: var(--color-surface);
   background-image: radial-gradient(
     ellipse at 0% 100%,
     rgba(140, 98, 57, 0.06) 0%,
     transparent 60%
   );
-  border-radius: var(--radius-lg);
-  box-shadow:
-    0 0 0 1px var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35)),
-    var(--shadow-card);
   display: grid;
   gap: var(--space-4);
 }
@@ -370,7 +341,7 @@
 @media (max-width: 899px) {
   .time-log-timer-panel {
     border-right: none;
-    border-bottom: 1px solid var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+    border-bottom: 1px solid var(--color-warm-border-soft);
     padding: var(--space-5);
   }
 

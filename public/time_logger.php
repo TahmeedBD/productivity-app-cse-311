@@ -3,7 +3,6 @@ require_once __DIR__ . '/../src/auth/guard.php';
 
 $pageTitle = 'Time Log';
 $pageCSS = 'time-log.css';
-$bodyClass = 'time-log-body';
 
 require_once 'header.php';
 ?>
@@ -11,12 +10,12 @@ require_once 'header.php';
 <div id="time-log-app" class="time-log-page">
     <div id="time-log-message" class="alert alert-danger time-log-message" hidden></div>
 
-    <header class="time-log-page-heading">
+    <header class="page-heading">
         <h1 class="text-h1">Time Log</h1>
         <p class="text-muted">Track and manage your daily activities.</p>
     </header>
 
-    <section id="time-log-hero" class="time-log-hero">
+    <section id="time-log-hero" class="time-log-hero card-featured">
         <div class="time-log-hero-body">
             <div class="time-log-timer-panel">
                 <div id="current-entry-duration" class="time-log-timer">00:00:00</div>
@@ -61,12 +60,12 @@ require_once 'header.php';
         </div>
     </section>
 
-    <section class="time-log-section">
-        <div class="time-log-section-header">
+    <section class="page-section">
+        <div class="page-section__header">
             <h2 class="text-h2">Today's Entries</h2>
         </div>
 
-        <div class="table-wrap">
+        <div class="table-wrap table-wrap--warm">
             <table class="table time-log-table">
                 <thead>
                     <tr>
@@ -86,7 +85,7 @@ require_once 'header.php';
         </div>
     </section>
 
-    <section class="card card-sm time-log-add-card">
+    <section class="card card-sm card-featured time-log-add-card">
         <h2 class="text-h2 time-log-add-title">Add Past Entry</h2>
 
         <form class="time-log-add-form" novalidate>

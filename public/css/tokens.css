@@ -89,16 +89,17 @@
   --transition-fast: 0.12s ease;
   --transition-base: 0.18s ease;
 
-  /* ─── Time Log page (mockup-aligned; use via var(--tl-*) in time-log.css) ─ */
-  --tl-page-bg: #120d0b;
+  /* ─── Warm accent borders (global — used by .card-featured, tables, etc.) ─ */
+  --color-warm-border: #8c6239;
+  --color-warm-border-soft: rgba(140, 98, 57, 0.35);
+
+  /* ─── Time Log page-specific tokens ──────────────────────── */
   --tl-hero-glow: rgba(255, 179, 128, 0.06);
   --tl-timer-display: #ffb380;
-  --tl-warm-border: #8c6239;
-  --tl-warm-border-soft: rgba(140, 98, 57, 0.35);
   --tl-status-mint: #4ade80;
   --tl-status-mint-muted: rgba(74, 222, 128, 0.85);
   --tl-status-mint-faint: rgba(74, 222, 128, 0.12);
   --tl-add-button-bg: #3d342c;
   --tl-add-button-hover: #4a4036;
-  --tl-cta-ink: #120d0b;
+  --tl-cta-ink: #0f0d0b;
 }
