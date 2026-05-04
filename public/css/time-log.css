@@ -109,16 +109,6 @@
   padding-top: var(--space-4);
 }
 
-.time-log-pause-btn {
-  background: transparent !important;
-  border: 1.5px solid var(--color-border-strong) !important;
-  color: var(--color-text) !important;
-}
-
-.time-log-pause-btn:hover {
-  background: var(--color-surface-alt) !important;
-}
-
 .time-log-primary-action {
   background: var(--tl-timer-display, #ffb380) !important;
   border: 1.5px solid var(--tl-timer-display, #ffb380) !important;

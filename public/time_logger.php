@@ -47,10 +47,6 @@ require_once 'header.php';
                     </div>
 
                     <div class="time-log-hero-actions">
-                        <button type="button" class="btn time-log-pause-btn" disabled aria-disabled="true" title="Pause is not available yet">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-                            Pause
-                        </button>
                         <button id="time-entry-stop-button" type="button" class="btn time-log-stop-btn" disabled data-default-label="Stop">
                             Stop
                         </button>
