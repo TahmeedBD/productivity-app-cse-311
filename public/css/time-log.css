@@ -100,10 +100,34 @@
   grid-column: span 2;
 }
 
+.time-log-inline-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.time-log-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.time-log-icon-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Action buttons row */
 .time-log-hero-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1.25fr;
   gap: var(--space-3);
   margin-top: auto;
   padding-top: var(--space-4);
@@ -127,11 +151,21 @@
   color: var(--color-text);
 }
 
+.time-log-select.is-placeholder-selected {
+  color: var(--color-text-muted);
+}
+
 .time-log-notes-input {
   min-height: 140px;
   height: auto;
   resize: none;
   padding: var(--space-3);
+}
+
+.time-log-notes-input[readonly] {
+  color: var(--color-text-sub);
+  background: color-mix(in srgb, var(--color-surface-alt) 88%, black 12%);
+  cursor: default;
 }
 
 .time-log-select:focus,
@@ -217,96 +251,16 @@
   white-space: nowrap;
 }
 
-/* ── Add Past Entry card ─────────────────────────────────────── */
-/* Border/shadow comes from .card-featured; only page-specific overrides here */
-.time-log-add-card {
-  background-image: radial-gradient(
-    ellipse at 0% 100%,
-    rgba(140, 98, 57, 0.06) 0%,
-    transparent 60%
-  );
-  display: grid;
-  gap: var(--space-4);
-}
-
-.time-log-add-title {
-  margin-bottom: var(--space-1);
-}
-
-.time-log-add-form {
-  display: grid;
-  gap: var(--space-4);
-  align-items: end;
-}
-
-/* Field overrides inside add form */
-.time-log-add-form .input,
-.time-log-add-form .select {
-  background: var(--color-surface-alt);
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
-}
-
-.time-log-add-form .input:focus,
-.time-log-add-form .select:focus {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-focus);
-}
-
-/* Suppress native browser chrome on time inputs */
-.time-log-add-form input[type='time'] {
-  appearance: none;
-  -webkit-appearance: none;
-  border-color: var(--color-border-strong) !important;
-  outline: none;
-  color-scheme: dark;
-}
-
-.time-log-add-form input[type='time']::-webkit-calendar-picker-indicator {
-  display: none;
-}
-
-/* Clock icon wrapper */
-.time-log-input-icon-wrap {
-  position: relative;
-}
-
-.time-log-input-has-icon {
-  padding-right: var(--space-7);
-}
-
-.time-log-input-icon {
-  position: absolute;
-  right: var(--space-3);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-muted);
-  pointer-events: none;
-  display: flex;
-}
-
-/* Add Entry button */
-.time-log-add-button-wrap {
-  display: flex;
-  align-items: flex-end;
-}
-
-.time-log-add-button {
-  width: 100%;
-  background: var(--tl-add-button-bg, #3d342c) !important;
-  border: 1.5px solid var(--tl-add-button-bg, #3d342c) !important;
-  color: var(--color-text-sub) !important;
-}
-
-.time-log-add-button:hover {
-  background: var(--tl-add-button-hover, #4a4036) !important;
-  border-color: var(--tl-add-button-hover, #4a4036) !important;
-  color: var(--color-text) !important;
-}
-
 /* ── Alert message ─────────────────────────────────────────── */
 .time-log-message {
   margin-bottom: 0;
+}
+
+.time-log-inline-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-sm, 14px);
+  line-height: 1.4;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */
@@ -328,10 +282,6 @@
   .time-log-hero-body {
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   }
-
-  .time-log-add-form {
-    grid-template-columns: 2fr 1.5fr 1.5fr 3fr 1.5fr;
-  }
 }
 
 /* ── Responsive: mobile ─────────────────────────────────────── */
@@ -344,9 +294,5 @@
 
   .time-log-timer {
     font-size: 48px;
-  }
-
-  .time-log-add-button {
-    width: 100%;
   }
 }

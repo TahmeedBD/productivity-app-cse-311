@@ -41,19 +41,34 @@ require_once 'header.php';
                             </select>
                         </div>
                         <div class="form-group time-log-form-notes-span">
-                            <label class="form-label" for="time-entry-notes">Notes</label>
+                            <div class="time-log-inline-label-row">
+                                <label class="form-label" for="time-entry-notes">Notes</label>
+                                <div class="time-log-inline-actions" aria-label="Current entry note actions">
+                                    <button id="time-entry-notes-edit-button" type="button" class="btn btn-ghost btn-sm time-log-icon-button" aria-label="Edit notes" title="Edit notes" disabled>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                    </button>
+                                    <button id="time-entry-reset-button" type="button" class="btn btn-ghost btn-sm time-log-icon-button" aria-label="Undo unsaved changes" title="Undo unsaved changes" disabled>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6L3 13"/></svg>
+                                    </button>
+                                </div>
+                            </div>
                             <textarea id="time-entry-notes" class="textarea time-log-notes-input" placeholder="What are you working on?" autocomplete="off"></textarea>
                         </div>
                     </div>
 
                     <div class="time-log-hero-actions">
+                        <button id="time-entry-save-button" type="button" class="btn btn-ghost" disabled data-default-label="Save">
+                            Save
+                        </button>
                         <button id="time-entry-stop-button" type="button" class="btn time-log-stop-btn" disabled data-default-label="Stop">
                             Stop
                         </button>
                         <button id="time-entry-start-button" class="btn time-log-primary-action" type="submit" data-default-label="Start entry">
-                            Start entry
+                            Start
                         </button>
                     </div>
+
+                    <p id="time-entry-error" class="time-log-inline-error" hidden></p>
                 </form>
             </div>
         </div>
@@ -83,52 +98,6 @@ require_once 'header.php';
                 </tbody>
             </table>
         </div>
-    </section>
-
-    <section class="card card-sm card-featured time-log-add-card">
-        <h2 class="text-h2 time-log-add-title">Add Past Entry</h2>
-
-        <form id="time-log-add-form" class="time-log-add-form" novalidate>
-            <div class="form-group">
-                <label class="form-label" for="past-entry-activity">Activity</label>
-                <select id="past-entry-activity" class="select" disabled aria-disabled="true" title="Coming soon">
-                    <option value="">Select…</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="past-entry-subtype">Subtype</label>
-                <select id="past-entry-subtype" class="select" disabled aria-disabled="true" title="Coming soon">
-                    <option value="">Select…</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="past-entry-start">Start Time</label>
-                <div class="time-log-input-icon-wrap">
-                    <input id="past-entry-start" class="input time-log-input-has-icon" type="time">
-                    <span class="time-log-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                    </span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="past-entry-end">End Time</label>
-                <div class="time-log-input-icon-wrap">
-                    <input id="past-entry-end" class="input time-log-input-has-icon" type="time">
-                    <span class="time-log-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                    </span>
-                </div>
-            </div>
-
-            <div class="time-log-add-button-wrap">
-                <button id="past-entry-add-button" class="btn time-log-add-button" type="submit" data-default-label="+ Add Entry">
-                    + Add Entry
-                </button>
-            </div>
-        </form>
     </section>
 </div>
 

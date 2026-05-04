@@ -25,6 +25,8 @@ type TimeEntry = {
   daily_log_id: number | string;
   activity_id?: number | string | null;
   activity_subtype_id?: number | string | null;
+  activity_name?: string | null;
+  activity_subtype_name?: string | null;
   start: string;
   end: string | null;
   state: string;
@@ -268,6 +270,8 @@ function populateSelectOptions<T>(
     option.textContent = getLabel(item);
     select.append(option);
   }
+
+  updatePlaceholderSelectionState(select);
 }
 
 function parseSelectedId(select: HTMLSelectElement | null): number | null {
@@ -278,6 +282,32 @@ function parseSelectedId(select: HTMLSelectElement | null): number | null {
   const parsed = Number(select.value);
 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeTimeForApi(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  const parts = trimmed.split(':');
+
+  if (parts.length === 2) {
+    return `${parts[0]}:${parts[1]}:00`;
+  }
+
+  return trimmed;
+}
+
+function updatePlaceholderSelectionState(
+  select: HTMLSelectElement | null,
+): void {
+  if (!select) {
+    return;
+  }
+
+  select.classList.toggle('is-placeholder-selected', select.value === '');
 }
 
 function renderCurrentEntryState(label: string, isRunning: boolean): void {
@@ -322,6 +352,28 @@ function clearTimeLogMessage(): void {
   messageElement.hidden = true;
   messageElement.className = 'time-log-message';
   messageElement.textContent = '';
+}
+
+function showInlineError(selector: string, message: string): void {
+  const element = document.querySelector<HTMLElement>(selector);
+
+  if (!element) {
+    return;
+  }
+
+  element.hidden = false;
+  element.textContent = message;
+}
+
+function clearInlineError(selector: string): void {
+  const element = document.querySelector<HTMLElement>(selector);
+
+  if (!element) {
+    return;
+  }
+
+  element.hidden = true;
+  element.textContent = '';
 }
 
 function setButtonLoading(
@@ -372,6 +424,285 @@ function getEntryBadgeClass(state: string): string {
   return 'badge badge-neutral';
 }
 
+type EntryFormSnapshot = {
+  activityId: number | null;
+  activitySubtypeId: number | null;
+  notes: string;
+};
+
+let availableActivities: Activity[] = [];
+let currentEntries: TimeEntry[] = [];
+let currentRunningEntry: TimeEntry | null = null;
+let currentEntrySnapshot: EntryFormSnapshot | null = null;
+let isNotesEditMode = false;
+
+function toNullableId(
+  value: number | string | null | undefined,
+): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function buildEntrySnapshot(entry: TimeEntry | null): EntryFormSnapshot {
+  return {
+    activityId: toNullableId(entry?.activity_id),
+    activitySubtypeId: toNullableId(entry?.activity_subtype_id),
+    notes: entry?.notes ?? '',
+  };
+}
+
+function getCurrentEntryFormSnapshot(): EntryFormSnapshot {
+  const activityField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const subtypeField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
+  const notesField =
+    document.querySelector<HTMLTextAreaElement>('#time-entry-notes');
+
+  return {
+    activityId: parseSelectedId(activityField),
+    activitySubtypeId: parseSelectedId(subtypeField),
+    notes: notesField?.value ?? '',
+  };
+}
+
+function areSnapshotsEqual(
+  left: EntryFormSnapshot | null,
+  right: EntryFormSnapshot | null,
+): boolean {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return (
+    left.activityId === right.activityId &&
+    left.activitySubtypeId === right.activitySubtypeId &&
+    left.notes === right.notes
+  );
+}
+
+function setSelectValue(
+  select: HTMLSelectElement | null,
+  value: number | null,
+): void {
+  if (!select) {
+    return;
+  }
+
+  select.value = value === null ? '' : String(value);
+  updatePlaceholderSelectionState(select);
+}
+
+async function loadSubtypeOptionsForSelect(
+  select: HTMLSelectElement | null,
+  activityId: number | null,
+  selectedSubtypeId: number | null,
+  idleLabel: string,
+  emptyLabel: string,
+  disabledTitle: string,
+): Promise<void> {
+  if (!select) {
+    return;
+  }
+
+  if (!activityId) {
+    populateSelectOptions(
+      select,
+      idleLabel,
+      [],
+      () => '',
+      () => '',
+    );
+    setSelectDisabledState(select, true, disabledTitle);
+    return;
+  }
+
+  const response = await fetchJson<ActivitySubtypesResponse>(
+    `/activity-subtypes/list.php?activity_id=${encodeURIComponent(String(activityId))}`,
+  );
+  const hasSubtypes = response.subtypes.length > 0;
+
+  populateSelectOptions(
+    select,
+    hasSubtypes ? 'Choose subtype (optional)' : emptyLabel,
+    response.subtypes,
+    (subtype) => String(subtype.id),
+    (subtype) => subtype.name,
+  );
+
+  if (selectedSubtypeId !== null) {
+    select.value = String(selectedSubtypeId);
+    updatePlaceholderSelectionState(select);
+  }
+
+  setSelectDisabledState(
+    select,
+    !hasSubtypes,
+    hasSubtypes ? '' : disabledTitle,
+  );
+}
+
+function syncCurrentEntryControls(): void {
+  const activityField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const subtypeField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
+  const notesField =
+    document.querySelector<HTMLTextAreaElement>('#time-entry-notes');
+  const saveButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-save-button',
+  );
+  const stopButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-stop-button',
+  );
+  const startButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-start-button',
+  );
+  const resetButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-reset-button',
+  );
+  const editNotesButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-notes-edit-button',
+  );
+  const hasRunningEntry = currentRunningEntry !== null;
+  const hasActivities = availableActivities.length > 0;
+  const selectedActivityId = parseSelectedId(activityField);
+  const hasSelectedActivity = (activityField?.value ?? '') !== '';
+  const subtypeHasChoices = (subtypeField?.options.length ?? 0) > 1;
+  const hasRequiredActivity = !hasRunningEntry || hasSelectedActivity;
+  const isDirty =
+    hasRunningEntry &&
+    !areSnapshotsEqual(getCurrentEntryFormSnapshot(), currentEntrySnapshot);
+
+  setSelectDisabledState(
+    activityField,
+    !hasRunningEntry || !hasActivities,
+    hasRunningEntry
+      ? hasActivities
+        ? ''
+        : 'Create an activity first'
+      : 'Start an entry first',
+  );
+  setSelectDisabledState(
+    subtypeField,
+    !hasRunningEntry || selectedActivityId === null || !subtypeHasChoices,
+    !hasRunningEntry
+      ? 'Start an entry first'
+      : selectedActivityId === null
+        ? 'Select an activity first'
+        : 'No subtypes available for this activity',
+  );
+
+  if (notesField) {
+    notesField.disabled = !hasRunningEntry;
+    notesField.readOnly = !hasRunningEntry || !isNotesEditMode;
+  }
+
+  if (saveButton) {
+    saveButton.disabled = !hasRunningEntry || !isDirty || !hasRequiredActivity;
+  }
+
+  if (stopButton) {
+    stopButton.disabled = !hasRunningEntry || !hasRequiredActivity;
+  }
+
+  if (startButton) {
+    startButton.textContent = hasRunningEntry ? 'Stop and Start' : 'Start';
+    startButton.dataset.defaultLabel = startButton.textContent;
+    startButton.disabled = hasRunningEntry && !hasRequiredActivity;
+  }
+
+  if (resetButton) {
+    resetButton.disabled = !isDirty;
+  }
+
+  if (editNotesButton) {
+    editNotesButton.disabled = !hasRunningEntry;
+  }
+}
+
+async function renderCurrentEntry(entries: TimeEntry[]): Promise<void> {
+  const runningEntry = getRunningEntry(entries);
+  const activityField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const subtypeField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
+  const notesField =
+    document.querySelector<HTMLTextAreaElement>('#time-entry-notes');
+
+  currentEntries = entries;
+  currentRunningEntry = runningEntry;
+  currentEntrySnapshot = buildEntrySnapshot(runningEntry);
+  isNotesEditMode = false;
+
+  stopRunningEntryTimer();
+
+  if (!runningEntry) {
+    setElementText('#current-entry-duration', '00:00:00');
+    setElementText('#current-entry-start', 'No entry is running right now.');
+    setSelectValue(activityField, null);
+    await loadSubtypeOptionsForSelect(
+      subtypeField,
+      null,
+      null,
+      'Select activity first',
+      'No subtypes yet',
+      'Start an entry first',
+    );
+    if (notesField) {
+      notesField.value = '';
+    }
+    renderCurrentEntryState('Idle', false);
+    syncCurrentEntryControls();
+
+    return;
+  }
+
+  const renderDuration = (): void => {
+    setElementText(
+      '#current-entry-duration',
+      formatEntryDuration(runningEntry),
+    );
+    renderEntries(currentEntries);
+  };
+
+  setSelectValue(activityField, currentEntrySnapshot.activityId);
+  await loadSubtypeOptionsForSelect(
+    subtypeField,
+    currentEntrySnapshot.activityId,
+    currentEntrySnapshot.activitySubtypeId,
+    'Select activity first',
+    'No subtypes yet',
+    'No subtypes available for this activity',
+  );
+
+  if (notesField) {
+    notesField.value = currentEntrySnapshot.notes;
+  }
+
+  renderDuration();
+  runningEntryTimerId = window.setInterval(renderDuration, 1000);
+  setElementText(
+    '#current-entry-start',
+    runningEntry.notes?.trim()
+      ? `Started at ${formatClockTime(runningEntry.start)} - ${runningEntry.notes.trim()}`
+      : `Started at ${formatClockTime(runningEntry.start)}`,
+  );
+  renderCurrentEntryState('Running', true);
+  syncCurrentEntryControls();
+}
+
 function renderEntries(entries: TimeEntry[]): void {
   const body =
     document.querySelector<HTMLTableSectionElement>('#time-entries-body');
@@ -383,7 +714,7 @@ function renderEntries(entries: TimeEntry[]): void {
   if (entries.length === 0) {
     body.innerHTML = `
 			<tr>
-				<td colspan="5" class="time-log-empty">No entries yet for today.</td>
+        <td colspan="6" class="time-log-empty">No entries yet for today.</td>
 			</tr>
 		`;
     return;
@@ -392,11 +723,15 @@ function renderEntries(entries: TimeEntry[]): void {
   body.innerHTML = entries
     .map((entry) => {
       const isRunning = entry.end === null || entry.state === 'running';
+      const timeRange = `${escapeHtml(formatClockTime(entry.start))} - ${escapeHtml(entry.end ? formatClockTime(entry.end) : '--')}`;
+      const activityLabel = escapeHtml(entry.activity_name || '—');
+      const subtypeLabel = escapeHtml(entry.activity_subtype_name || '—');
 
       return `
 				<tr class="time-log-entry-row ${isRunning ? 'is-running' : ''}">
-					<td>${escapeHtml(formatClockTime(entry.start))}</td>
-					<td>${escapeHtml(entry.end ? formatClockTime(entry.end) : '--')}</td>
+          <td>${timeRange}</td>
+          <td>${activityLabel}</td>
+          <td>${subtypeLabel}</td>
 					<td class="time-log-duration-cell ${isRunning ? 'is-running' : ''}">${escapeHtml(formatEntryDuration(entry))}</td>
 					<td><span class="time-log-entry-badge ${getEntryBadgeClass(entry.state)}">${escapeHtml(formatStateLabel(entry.state))}</span></td>
 					<td class="time-log-notes-cell">${escapeHtml(entry.notes?.trim() || 'No notes')}</td>
@@ -413,41 +748,6 @@ function stopRunningEntryTimer(): void {
   }
 }
 
-function renderCurrentEntry(entries: TimeEntry[]): void {
-  const runningEntry = getRunningEntry(entries);
-
-  stopRunningEntryTimer();
-
-  if (!runningEntry) {
-    setElementText('#current-entry-duration', '00:00:00');
-    setElementText('#current-entry-start', 'No entry is running right now.');
-    setFieldValue('#time-entry-notes', '');
-    setButtonText('#time-entry-start-button', 'Start entry');
-    renderCurrentEntryState('Idle', false);
-
-    return;
-  }
-
-  const renderDuration = (): void => {
-    setElementText(
-      '#current-entry-duration',
-      formatEntryDuration(runningEntry),
-    );
-  };
-
-  renderDuration();
-  runningEntryTimerId = window.setInterval(renderDuration, 1000);
-  setElementText(
-    '#current-entry-start',
-    runningEntry.notes?.trim()
-      ? `Started at ${formatClockTime(runningEntry.start)} - ${runningEntry.notes.trim()}`
-      : `Started at ${formatClockTime(runningEntry.start)}`,
-  );
-  setFieldValue('#time-entry-notes', '');
-  setButtonText('#time-entry-start-button', 'Start new');
-  renderCurrentEntryState('Running', true);
-}
-
 function renderDailyLog(dailyLog: DailyLog): void {
   setElementText('#time-log-day-pill', formatDayLabel(dailyLog.date));
   setElementText(
@@ -461,21 +761,13 @@ async function loadActivityOptions(): Promise<void> {
   const startActivitySelect = document.querySelector<HTMLSelectElement>(
     '#time-entry-activity',
   );
-  const pastActivitySelect = document.querySelector<HTMLSelectElement>(
-    '#past-entry-activity',
-  );
   const hasActivities = response.activities.length > 0;
 
+  availableActivities = response.activities;
+
   populateSelectOptions(
     startActivitySelect,
-    hasActivities ? 'Select...' : 'No activities yet',
-    response.activities,
-    (activity) => String(activity.id),
-    (activity) => activity.name,
-  );
-  populateSelectOptions(
-    pastActivitySelect,
-    hasActivities ? 'Select...' : 'No activities yet',
+    hasActivities ? 'Choose activity (required)' : 'No activities yet',
     response.activities,
     (activity) => String(activity.id),
     (activity) => activity.name,
@@ -486,83 +778,78 @@ async function loadActivityOptions(): Promise<void> {
     !hasActivities,
     hasActivities ? '' : 'Create an activity first',
   );
-  setSelectDisabledState(
-    pastActivitySelect,
-    !hasActivities,
-    hasActivities ? '' : 'Create an activity first',
-  );
 }
 
-async function loadSubtypeOptions(activityId: number | null): Promise<void> {
-  const subtypeSelect = document.querySelector<HTMLSelectElement>(
-    '#time-entry-subtype',
-  );
-
-  if (!activityId) {
-    populateSelectOptions(
-      subtypeSelect,
-      'Select activity first',
-      [],
-      () => '',
-      () => '',
-    );
-    setSelectDisabledState(subtypeSelect, true, 'Select an activity first');
-
-    return;
-  }
-
-  const response = await fetchJson<ActivitySubtypesResponse>(
-    `/activity-subtypes/list.php?activity_id=${encodeURIComponent(String(activityId))}`,
-  );
-  const hasSubtypes = response.subtypes.length > 0;
-
-  populateSelectOptions(
-    subtypeSelect,
-    hasSubtypes ? 'Select...' : 'No subtypes yet',
-    response.subtypes,
-    (subtype) => String(subtype.id),
-    (subtype) => subtype.name,
-  );
-  setSelectDisabledState(
-    subtypeSelect,
-    !hasSubtypes,
-    hasSubtypes ? '' : 'No subtypes available for this activity',
-  );
-}
-
-function bindActivitySubtypeSelects(): void {
-  const activitySelect = document.querySelector<HTMLSelectElement>(
-    '#time-entry-activity',
-  );
-
-  if (!activitySelect) {
-    return;
-  }
-
-  activitySelect.addEventListener('change', () => {
-    void loadSubtypeOptions(parseSelectedId(activitySelect)).catch(
-      (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Unable to load subtypes right now.';
-
-        showTimeLogMessage(message, 'danger');
-        void loadSubtypeOptions(null);
-      },
-    );
-  });
-}
-
-async function loadTimeLogPage(): Promise<void> {
+async function refreshTimeLogPage(): Promise<void> {
   const [dailyLogResponse, entriesResponse] = await Promise.all([
     fetchJson<DailyLogResponse>('/daily-log/today.php'),
     fetchJson<TimeEntriesResponse>('/time-entries/today.php'),
   ]);
 
   renderDailyLog(dailyLogResponse.daily_log);
-  renderCurrentEntry(entriesResponse.entries);
+  await renderCurrentEntry(entriesResponse.entries);
   renderEntries(entriesResponse.entries);
+}
+
+async function resetCurrentEntryFormToSnapshot(): Promise<void> {
+  const activityField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const subtypeField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
+  const notesField =
+    document.querySelector<HTMLTextAreaElement>('#time-entry-notes');
+
+  if (!currentEntrySnapshot) {
+    return;
+  }
+
+  setSelectValue(activityField, currentEntrySnapshot.activityId);
+  await loadSubtypeOptionsForSelect(
+    subtypeField,
+    currentEntrySnapshot.activityId,
+    currentEntrySnapshot.activitySubtypeId,
+    'Select activity first',
+    'No subtypes yet',
+    'No subtypes available for this activity',
+  );
+
+  if (notesField) {
+    notesField.value = currentEntrySnapshot.notes;
+  }
+
+  isNotesEditMode = false;
+  syncCurrentEntryControls();
+}
+
+function buildCurrentEntryPayload(): Record<string, string | number> {
+  const snapshot = getCurrentEntryFormSnapshot();
+  const payload: Record<string, string | number> = {
+    notes: snapshot.notes,
+  };
+
+  if (snapshot.activityId !== null) {
+    payload.activity_id = snapshot.activityId;
+  }
+
+  if (snapshot.activitySubtypeId !== null) {
+    payload.activity_subtype_id = snapshot.activitySubtypeId;
+  }
+
+  return payload;
+}
+
+function getRunningEntryValidationError(): string | null {
+  if (!currentRunningEntry) {
+    return null;
+  }
+
+  return parseSelectedId(
+    document.querySelector<HTMLSelectElement>('#time-entry-activity'),
+  ) === null
+    ? 'Activity is required.'
+    : null;
 }
 
 function bindTimeLogPage(): void {
@@ -576,42 +863,170 @@ function bindTimeLogPage(): void {
     '#time-entry-start-form',
   );
   const notesField =
-    document.querySelector<HTMLInputElement>('#time-entry-notes');
+    document.querySelector<HTMLTextAreaElement>('#time-entry-notes');
   const activityField = document.querySelector<HTMLSelectElement>(
     '#time-entry-activity',
   );
   const subtypeField = document.querySelector<HTMLSelectElement>(
     '#time-entry-subtype',
   );
+  const saveButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-save-button',
+  );
+  const stopButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-stop-button',
+  );
   const submitButton = document.querySelector<HTMLButtonElement>(
     '#time-entry-start-button',
   );
+  const resetButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-reset-button',
+  );
+  const editNotesButton = document.querySelector<HTMLButtonElement>(
+    '#time-entry-notes-edit-button',
+  );
 
-  bindActivitySubtypeSelects();
+  activityField?.addEventListener('change', () => {
+    clearInlineError('#time-entry-error');
+    void loadSubtypeOptionsForSelect(
+      subtypeField,
+      parseSelectedId(activityField),
+      null,
+      'Select activity first',
+      'No subtypes yet',
+      'Select an activity first',
+    )
+      .then(() => {
+        syncCurrentEntryControls();
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Unable to load subtypes right now.';
+        showTimeLogMessage(message, 'danger');
+      });
+  });
+  subtypeField?.addEventListener('change', () => {
+    clearInlineError('#time-entry-error');
+    syncCurrentEntryControls();
+  });
+  notesField?.addEventListener('input', () => {
+    clearInlineError('#time-entry-error');
+    syncCurrentEntryControls();
+  });
+  editNotesButton?.addEventListener('click', () => {
+    if (!currentRunningEntry || !notesField) {
+      return;
+    }
+
+    isNotesEditMode = true;
+    notesField.readOnly = false;
+    notesField.focus();
+    syncCurrentEntryControls();
+  });
+  resetButton?.addEventListener('click', () => {
+    void resetCurrentEntryFormToSnapshot();
+  });
+
+  saveButton?.addEventListener('click', async () => {
+    if (!currentRunningEntry) {
+      return;
+    }
+
+    const validationError = getRunningEntryValidationError();
+
+    if (validationError) {
+      showInlineError('#time-entry-error', validationError);
+      syncCurrentEntryControls();
+      return;
+    }
+
+    clearInlineError('#time-entry-error');
+    clearTimeLogMessage();
+    setButtonLoading(saveButton, true, 'Saving...');
+
+    try {
+      await fetchJson<StartEntryResponse>('/time-entries/save.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildCurrentEntryPayload()),
+      });
+
+      await refreshTimeLogPage();
+      clearTimeLogMessage();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to save the current entry right now.';
+      showInlineError('#time-entry-error', message);
+    } finally {
+      setButtonLoading(saveButton, false, 'Saving...');
+      syncCurrentEntryControls();
+    }
+  });
+
+  stopButton?.addEventListener('click', async () => {
+    if (!currentRunningEntry) {
+      return;
+    }
+
+    const validationError = getRunningEntryValidationError();
+
+    if (validationError) {
+      showInlineError('#time-entry-error', validationError);
+      syncCurrentEntryControls();
+      return;
+    }
+
+    clearInlineError('#time-entry-error');
+    clearTimeLogMessage();
+    setButtonLoading(stopButton, true, 'Stopping...');
+
+    try {
+      await fetchJson<StartEntryResponse>('/time-entries/end.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildCurrentEntryPayload()),
+      });
+
+      await refreshTimeLogPage();
+      clearTimeLogMessage();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to stop the current entry right now.';
+      showInlineError('#time-entry-error', message);
+    } finally {
+      setButtonLoading(stopButton, false, 'Stopping...');
+      syncCurrentEntryControls();
+    }
+  });
 
   if (form) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+
+      const validationError = getRunningEntryValidationError();
+
+      if (validationError) {
+        showInlineError('#time-entry-error', validationError);
+        syncCurrentEntryControls();
+        return;
+      }
+
+      clearInlineError('#time-entry-error');
       clearTimeLogMessage();
-      setButtonLoading(submitButton, true, 'Saving...');
+      setButtonLoading(submitButton, true, 'Starting...');
 
       try {
-        const notes = notesField?.value.trim() ?? '';
-        const activityId = parseSelectedId(activityField);
-        const activitySubtypeId = parseSelectedId(subtypeField);
-        const payload: Record<string, string | number> = {};
-
-        if (notes) {
-          payload.notes = notes;
-        }
-
-        if (activityId !== null) {
-          payload.activity_id = activityId;
-        }
-
-        if (activitySubtypeId !== null) {
-          payload.activity_subtype_id = activitySubtypeId;
-        }
+        const payload = currentRunningEntry ? buildCurrentEntryPayload() : {};
 
         await fetchJson<StartEntryResponse>('/time-entries/start.php', {
           method: 'POST',
@@ -621,33 +1036,32 @@ function bindTimeLogPage(): void {
           body: JSON.stringify(payload),
         });
 
-        await loadTimeLogPage();
+        await refreshTimeLogPage();
         clearTimeLogMessage();
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
             : 'Unable to start the next entry right now.';
-        showTimeLogMessage(message, 'danger');
+        showInlineError('#time-entry-error', message);
       } finally {
-        setButtonLoading(submitButton, false, 'Saving...');
+        setButtonLoading(submitButton, false, 'Starting...');
+        syncCurrentEntryControls();
       }
     });
   }
 
-  void Promise.all([
-    loadActivityOptions(),
-    loadSubtypeOptions(null),
-    loadTimeLogPage(),
-  ]).catch((error: unknown) => {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Unable to load the time log right now.';
-    showTimeLogMessage(message, 'danger');
-    renderCurrentEntry([]);
-    renderEntries([]);
-  });
+  void Promise.all([loadActivityOptions(), refreshTimeLogPage()]).catch(
+    (error: unknown) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to load the time log right now.';
+      showTimeLogMessage(message, 'danger');
+      renderCurrentEntry([]);
+      renderEntries([]);
+    },
+  );
 }
 
 bindTimeLogPage();
