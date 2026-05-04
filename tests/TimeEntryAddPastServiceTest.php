@@ -63,6 +63,8 @@ final class TimeEntryAddPastServiceTest extends TestCase
 
     public function testAddsPastEntryAsCompleted(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $entry = add_past_time_entry(
             $this->pdo,
             'user-1',
@@ -70,6 +72,7 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:00:00',
             '10:30:00',
             'Morning focus',
+            (int) $activity['id'],
         );
 
         $this->assertSame('2026-05-17 09:00:00', $entry['start']);
@@ -80,6 +83,8 @@ final class TimeEntryAddPastServiceTest extends TestCase
 
     public function testRejectsEntryWithStartBeforeWakeTime(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $this->expectException(\InvalidArgumentException::class);
 
         add_past_time_entry(
@@ -89,11 +94,14 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '07:30:00',
             '08:30:00',
             'Too early',
+            (int) $activity['id'],
         );
     }
 
     public function testRejectsEntryWithEndAfterSleepTime(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $this->expectException(\InvalidArgumentException::class);
 
         add_past_time_entry(
@@ -103,11 +111,14 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '22:00:00',
             '23:30:00',
             'Too late',
+            (int) $activity['id'],
         );
     }
 
     public function testRejectsEntryThatOverlapsExistingCompletedEntry(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         add_past_time_entry(
             $this->pdo,
             'user-1',
@@ -115,6 +126,7 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:00:00',
             '10:00:00',
             'First block',
+            (int) $activity['id'],
         );
 
         $this->expectException(\InvalidArgumentException::class);
@@ -126,19 +138,16 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:30:00',
             '10:30:00',
             'Overlapping',
+            (int) $activity['id'],
         );
     }
 
     public function testRejectsEntryThatOverlapsRunningEntry(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         // Running entry starts at 09:00 with no end
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-17',
-            '09:00:00',
-            'Running',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-17', '09:00:00');
 
         $this->expectException(\InvalidArgumentException::class);
 
@@ -150,19 +159,16 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:30:00',
             '10:30:00',
             'Overlapping with running',
+            (int) $activity['id'],
         );
     }
 
     public function testRejectsEntryWhoseEndOverlapsRunningEntry(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         // Running entry starts at 10:00
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-17',
-            '10:00:00',
-            'Running',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-17', '10:00:00');
 
         $this->expectException(\InvalidArgumentException::class);
 
@@ -174,19 +180,16 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:00:00',
             '10:30:00',
             'Overlapping end',
+            (int) $activity['id'],
         );
     }
 
     public function testAllowsPastEntryEndingExactlyWhenRunningEntryStarts(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         // Running entry starts at 10:00
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-17',
-            '10:00:00',
-            'Running',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-17', '10:00:00');
 
         // Past entry ends at exactly 10:00 — adjacent but not overlapping
         $entry = add_past_time_entry(
@@ -196,6 +199,7 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:00:00',
             '10:00:00',
             'Adjacent',
+            (int) $activity['id'],
         );
 
         $this->assertSame('completed', $entry['state']);
@@ -204,12 +208,13 @@ final class TimeEntryAddPastServiceTest extends TestCase
 
     public function testRunningEntryRemainsRunningAfterAddingPastEntry(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $runningEntry = start_time_entry(
             $this->pdo,
             'user-1',
             '2026-05-17',
             '11:00:00',
-            'Still running',
         );
 
         add_past_time_entry(
@@ -219,6 +224,7 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:00:00',
             '10:30:00',
             'Gap filler',
+            (int) $activity['id'],
         );
 
         $reloaded = $this->findEntryById((int) $runningEntry['id']);
@@ -228,13 +234,9 @@ final class TimeEntryAddPastServiceTest extends TestCase
 
     public function testAllowsPastEntryBeforeRunningEntryWithoutOverlap(): void
     {
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-17',
-            '11:00:00',
-            'Running',
-        );
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
+        start_time_entry($this->pdo, 'user-1', '2026-05-17', '11:00:00');
 
         $entry = add_past_time_entry(
             $this->pdo,
@@ -243,6 +245,7 @@ final class TimeEntryAddPastServiceTest extends TestCase
             '09:00:00',
             '10:30:00',
             'Gap filler',
+            (int) $activity['id'],
         );
 
         $this->assertSame('completed', $entry['state']);

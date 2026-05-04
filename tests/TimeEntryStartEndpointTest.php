@@ -62,22 +62,21 @@ final class TimeEntryStartEndpointTest extends TestCase
         );
     }
 
-    public function testStartEntryResponseReturnsCreatedRunningEntry(): void
+    public function testStartEntryResponseReturnsCreatedBlankRunningEntry(): void
     {
         $response = build_start_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
-            [
-                'start' => '09:00:00',
-                'notes' => 'Deep work',
-            ],
+            ['start' => '09:00:00'],
             '2026-05-10',
         );
 
         $this->assertSame(201, $response['status']);
         $this->assertTrue($response['body']['ok']);
         $this->assertSame('running', $response['body']['entry']['state']);
-        $this->assertSame('Deep work', $response['body']['entry']['notes']);
+        $this->assertSame('', $response['body']['entry']['notes']);
+        $this->assertNull($response['body']['entry']['activity_id']);
+        $this->assertNull($response['body']['entry']['activity_subtype_id']);
         $this->assertNull($response['body']['entry']['end']);
     }
 
@@ -86,7 +85,7 @@ final class TimeEntryStartEndpointTest extends TestCase
         $response = build_start_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
-            ['notes' => 'Missing start'],
+            [],
             '2026-05-10',
             '11:20:00',
         );
@@ -97,11 +96,17 @@ final class TimeEntryStartEndpointTest extends TestCase
             '2026-05-10 11:20:00',
             $response['body']['entry']['start'],
         );
-        $this->assertSame('Missing start', $response['body']['entry']['notes']);
+        $this->assertSame('', $response['body']['entry']['notes']);
     }
 
-    public function testStartEntryResponseReturnsSelectedActivityAndSubtype(): void
+    public function testStartEntryResponseStopsCurrentEntryAndStartsBlankNextEntry(): void
     {
+        build_start_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            ['start' => '09:00:00'],
+            '2026-05-10',
+        );
         $activity = create_activity($this->pdo, 'user-1', 'Work');
         $subtype = create_activity_subtype(
             $this->pdo,
@@ -114,7 +119,7 @@ final class TimeEntryStartEndpointTest extends TestCase
             $this->pdo,
             ['id' => 'user-1'],
             [
-                'start' => '09:00:00',
+                'start' => '10:15:00',
                 'notes' => 'Deep work',
                 'activity_id' => $activity['id'],
                 'activity_subtype_id' => $subtype['id'],
@@ -123,13 +128,8 @@ final class TimeEntryStartEndpointTest extends TestCase
         );
 
         $this->assertSame(201, $response['status']);
-        $this->assertSame(
-            (int) $activity['id'],
-            (int) $response['body']['entry']['activity_id'],
-        );
-        $this->assertSame(
-            (int) $subtype['id'],
-            (int) $response['body']['entry']['activity_subtype_id'],
-        );
+        $this->assertNull($response['body']['entry']['activity_id']);
+        $this->assertNull($response['body']['entry']['activity_subtype_id']);
+        $this->assertSame('', $response['body']['entry']['notes']);
     }
 }

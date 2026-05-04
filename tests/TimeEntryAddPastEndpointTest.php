@@ -64,6 +64,8 @@ final class TimeEntryAddPastEndpointTest extends TestCase
 
     public function testAddPastEntryResponseReturnsCreatedCompletedEntry(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $response = build_add_past_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
@@ -71,6 +73,7 @@ final class TimeEntryAddPastEndpointTest extends TestCase
                 'start' => '09:00:00',
                 'end' => '10:30:00',
                 'notes' => 'Deep work',
+                'activity_id' => $activity['id'],
             ],
             '2026-05-18',
         );
@@ -125,6 +128,8 @@ final class TimeEntryAddPastEndpointTest extends TestCase
 
     public function testAddPastEntryResponseReturns422WhenEntryViolatesRules(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $response = build_add_past_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
@@ -132,6 +137,7 @@ final class TimeEntryAddPastEndpointTest extends TestCase
                 'start' => '07:00:00',
                 'end' => '08:30:00',
                 'notes' => 'Before wake time',
+                'activity_id' => $activity['id'],
             ],
             '2026-05-18',
         );
@@ -142,12 +148,15 @@ final class TimeEntryAddPastEndpointTest extends TestCase
 
     public function testAddPastEntryResponseAcceptsEmptyNotes(): void
     {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
         $response = build_add_past_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
             [
                 'start' => '09:00:00',
                 'end' => '10:00:00',
+                'activity_id' => $activity['id'],
             ],
             '2026-05-18',
         );

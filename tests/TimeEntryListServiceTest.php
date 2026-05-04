@@ -68,45 +68,73 @@ final class TimeEntryListServiceTest extends TestCase
         $this->assertSame([], $entries);
     }
 
-    public function testListTodayTimeEntriesReturnsEntriesSortedByStartAscending(): void
+    public function testListTodayTimeEntriesReturnsEntriesSortedByStartDescending(): void
     {
-        start_time_entry($this->pdo, 'user-1', '2026-05-11', '09:00:00', 'One');
-        start_time_entry($this->pdo, 'user-1', '2026-05-11', '10:15:00', 'Two');
-        start_time_entry(
+        $activity = create_activity($this->pdo, 'user-1', 'Deep Work');
+        $subtype = create_activity_subtype(
             $this->pdo,
+            (int) $activity['id'],
             'user-1',
-            '2026-05-11',
-            '11:30:00',
-            'Three',
+            'Coding',
         );
 
-        $entries = list_today_time_entries($this->pdo, 'user-1', '2026-05-11');
-
-        $this->assertCount(3, $entries);
-        $this->assertSame('2026-05-11 09:00:00', $entries[0]['start']);
-        $this->assertSame('2026-05-11 10:15:00', $entries[1]['start']);
-        $this->assertSame('2026-05-11 11:30:00', $entries[2]['start']);
-        $this->assertNull($entries[2]['end']);
-        $this->assertSame('running', $entries[2]['state']);
-        $this->assertArrayHasKey('activity_name', $entries[0]);
-        $this->assertNull($entries[0]['activity_name']);
-    }
-
-    public function testListTodayTimeEntriesDoesNotLeakOtherUsersEntries(): void
-    {
-        start_time_entry(
+        add_past_time_entry(
             $this->pdo,
             'user-1',
             '2026-05-11',
             '09:00:00',
-            'Mine',
+            '10:00:00',
+            'One',
+            (int) $activity['id'],
+            (int) $subtype['id'],
         );
-        start_time_entry(
+        add_past_time_entry(
+            $this->pdo,
+            'user-1',
+            '2026-05-11',
+            '10:15:00',
+            '11:00:00',
+            'Two',
+            (int) $activity['id'],
+        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-11', '11:30:00');
+
+        $entries = list_today_time_entries($this->pdo, 'user-1', '2026-05-11');
+
+        $this->assertCount(3, $entries);
+        $this->assertSame('2026-05-11 11:30:00', $entries[0]['start']);
+        $this->assertSame('2026-05-11 10:15:00', $entries[1]['start']);
+        $this->assertSame('2026-05-11 09:00:00', $entries[2]['start']);
+        $this->assertNull($entries[0]['end']);
+        $this->assertSame('running', $entries[0]['state']);
+        $this->assertSame('Deep Work', $entries[1]['activity_name']);
+        $this->assertNull($entries[1]['activity_subtype_name']);
+        $this->assertSame('Deep Work', $entries[2]['activity_name']);
+        $this->assertSame('Coding', $entries[2]['activity_subtype_name']);
+    }
+
+    public function testListTodayTimeEntriesDoesNotLeakOtherUsersEntries(): void
+    {
+        $myActivity = create_activity($this->pdo, 'user-1', 'Mine');
+        $otherActivity = create_activity($this->pdo, 'user-2', 'Theirs');
+
+        add_past_time_entry(
+            $this->pdo,
+            'user-1',
+            '2026-05-11',
+            '09:00:00',
+            '09:30:00',
+            'Mine',
+            (int) $myActivity['id'],
+        );
+        add_past_time_entry(
             $this->pdo,
             'user-2',
             '2026-05-11',
             '09:30:00',
+            '10:00:00',
             'Not mine',
+            (int) $otherActivity['id'],
         );
 
         $entries = list_today_time_entries($this->pdo, 'user-1', '2026-05-11');
@@ -125,11 +153,12 @@ final class TimeEntryListServiceTest extends TestCase
             'Coding',
         );
 
-        start_time_entry(
+        add_past_time_entry(
             $this->pdo,
             'user-1',
             '2026-05-20',
             '10:00:00',
+            '10:30:00',
             'Focus block',
             (int) $activity['id'],
             (int) $subtype['id'],

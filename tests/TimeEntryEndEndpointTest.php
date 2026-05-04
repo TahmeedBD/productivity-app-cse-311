@@ -33,6 +33,22 @@ final class TimeEntryEndEndpointTest extends TestCase
         );
 
         $this->pdo->exec(
+            'CREATE TABLE activities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
+            'CREATE TABLE activity_subtypes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                activity_id INTEGER NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
             'CREATE TABLE time_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 daily_log_id INTEGER NOT NULL,
@@ -48,18 +64,17 @@ final class TimeEntryEndEndpointTest extends TestCase
 
     public function testEndEntryResponseReturnsCompletedEntry(): void
     {
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-16',
-            '09:00:00',
-            'Work',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-16', '09:00:00');
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
 
         $response = build_end_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
-            ['end' => '10:30:00'],
+            [
+                'end' => '10:30:00',
+                'activity_id' => $activity['id'],
+                'notes' => 'Work',
+            ],
             '2026-05-16',
         );
 
@@ -70,22 +85,22 @@ final class TimeEntryEndEndpointTest extends TestCase
             '2026-05-16 10:30:00',
             $response['body']['entry']['end'],
         );
+        $this->assertSame(
+            (int) $activity['id'],
+            (int) $response['body']['entry']['activity_id'],
+        );
+        $this->assertSame('Work', $response['body']['entry']['notes']);
     }
 
     public function testEndEntryResponseUsesCurrentTimeWhenEndIsMissing(): void
     {
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-16',
-            '09:00:00',
-            'Work',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-16', '09:00:00');
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
 
         $response = build_end_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
-            [],
+            ['activity_id' => $activity['id']],
             '2026-05-16',
             '10:45:00',
         );
@@ -113,18 +128,28 @@ final class TimeEntryEndEndpointTest extends TestCase
 
     public function testEndEntryResponseReturns422WhenEndTimeIsInvalid(): void
     {
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-16',
-            '09:00:00',
-            'Work',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-16', '09:00:00');
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
 
         $response = build_end_time_entry_response(
             $this->pdo,
             ['id' => 'user-1'],
-            ['end' => '08:30:00'],
+            ['end' => '08:30:00', 'activity_id' => $activity['id']],
+            '2026-05-16',
+        );
+
+        $this->assertSame(422, $response['status']);
+        $this->assertFalse($response['body']['ok']);
+    }
+
+    public function testEndEntryResponseReturns422WhenActivityIsMissing(): void
+    {
+        start_time_entry($this->pdo, 'user-1', '2026-05-16', '09:00:00');
+
+        $response = build_end_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            ['end' => '10:30:00'],
             '2026-05-16',
         );
 

@@ -61,98 +61,32 @@ final class TimeEntryStartServiceTest extends TestCase
         );
     }
 
-    public function testStartsFirstEntryAsRunningWhenNoEntriesExist(): void
+    public function testStartsFirstEntryAsBlankRunningEntryWhenNoEntriesExist(): void
     {
         $entry = start_time_entry(
             $this->pdo,
             'user-1',
             '2026-05-09',
             '09:00:00',
-            'Deep work',
         );
 
         $this->assertSame('2026-05-09 09:00:00', $entry['start']);
         $this->assertNull($entry['end']);
         $this->assertSame('running', $entry['state']);
-        $this->assertSame('Deep work', $entry['notes']);
+        $this->assertSame('', $entry['notes']);
+        $this->assertNull($entry['activity_id']);
+        $this->assertNull($entry['activity_subtype_id']);
         $this->assertSame(1, $this->countEntries());
     }
 
-    public function testStartingNewEntryClosesPreviousRunningEntryAtExactNewStart(): void
+    public function testStopAndStartPersistsCurrentEntryValuesAndCreatesBlankNextEntry(): void
     {
         $firstEntry = start_time_entry(
             $this->pdo,
             'user-1',
             '2026-05-09',
             '09:00:00',
-            'First block',
         );
-        $secondEntry = start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-09',
-            '10:15:00',
-            'Second block',
-        );
-
-        $reloadedFirstEntry = $this->findEntryById((int) $firstEntry['id']);
-
-        $this->assertSame('2026-05-09 10:15:00', $reloadedFirstEntry['end']);
-        $this->assertSame('completed', $reloadedFirstEntry['state']);
-        $this->assertNull($secondEntry['end']);
-        $this->assertSame('running', $secondEntry['state']);
-        $this->assertSame(2, $this->countEntries());
-    }
-
-    public function testRejectsEntryStartBeforeWakeTime(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-09',
-            '07:30:00',
-            'Too early',
-        );
-    }
-
-    public function testRejectsEntryStartAtOrAfterSleepTime(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-09',
-            '23:00:00',
-            'Too late',
-        );
-    }
-
-    public function testRejectsNewStartThatDoesNotAdvancePastCurrentRunningEntry(): void
-    {
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-09',
-            '09:00:00',
-            'First block',
-        );
-
-        $this->expectException(\InvalidArgumentException::class);
-
-        start_time_entry(
-            $this->pdo,
-            'user-1',
-            '2026-05-09',
-            '09:00:00',
-            'Invalid second block',
-        );
-    }
-
-    public function testStartPersistsSelectedActivityAndSubtype(): void
-    {
         $activity = create_activity($this->pdo, 'user-1', 'Work');
         $subtype = create_activity_subtype(
             $this->pdo,
@@ -160,22 +94,91 @@ final class TimeEntryStartServiceTest extends TestCase
             'user-1',
             'Coding',
         );
-
-        $entry = start_time_entry(
+        $secondEntry = start_time_entry(
             $this->pdo,
             'user-1',
             '2026-05-09',
-            '09:00:00',
-            'Deep work',
-            (int) $activity['id'],
-            (int) $subtype['id'],
+            '10:15:00',
+            [
+                'activity_id' => (int) $activity['id'],
+                'activity_subtype_id' => (int) $subtype['id'],
+                'notes' => 'First block',
+            ],
         );
 
-        $this->assertSame((int) $activity['id'], (int) $entry['activity_id']);
+        $reloadedFirstEntry = $this->findEntryById((int) $firstEntry['id']);
+
+        $this->assertSame('2026-05-09 10:15:00', $reloadedFirstEntry['end']);
+        $this->assertSame('completed', $reloadedFirstEntry['state']);
+        $this->assertSame(
+            (int) $activity['id'],
+            (int) $reloadedFirstEntry['activity_id'],
+        );
         $this->assertSame(
             (int) $subtype['id'],
-            (int) $entry['activity_subtype_id'],
+            (int) $reloadedFirstEntry['activity_subtype_id'],
         );
+        $this->assertSame('First block', $reloadedFirstEntry['notes']);
+        $this->assertNull($secondEntry['end']);
+        $this->assertSame('running', $secondEntry['state']);
+        $this->assertNull($secondEntry['activity_id']);
+        $this->assertNull($secondEntry['activity_subtype_id']);
+        $this->assertSame('', $secondEntry['notes']);
+        $this->assertSame(2, $this->countEntries());
+    }
+
+    public function testRejectsEntryStartBeforeWakeTime(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '07:30:00', []);
+    }
+
+    public function testRejectsEntryStartAtOrAfterSleepTime(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '23:00:00', []);
+    }
+
+    public function testRejectsNewStartThatDoesNotAdvancePastCurrentRunningEntry(): void
+    {
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '09:00:00');
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '09:00:00');
+    }
+
+    public function testRejectsStopAndStartWhenActivityIsMissing(): void
+    {
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '09:00:00');
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '10:15:00', [
+            'notes' => 'Missing activity',
+        ]);
+    }
+
+    public function testRejectsStopAndStartWhenSubtypeDoesNotBelongToActivity(): void
+    {
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '09:00:00');
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+        $otherActivity = create_activity($this->pdo, 'user-1', 'Health');
+        $subtype = create_activity_subtype(
+            $this->pdo,
+            (int) $otherActivity['id'],
+            'user-1',
+            'Cardio',
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        start_time_entry($this->pdo, 'user-1', '2026-05-09', '10:15:00', [
+            'activity_id' => (int) $activity['id'],
+            'activity_subtype_id' => (int) $subtype['id'],
+        ]);
     }
 
     private function countEntries(): int

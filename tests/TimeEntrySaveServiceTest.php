@@ -4,11 +4,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/../src/daily_logs/helpers.php';
 require_once __DIR__ . '/../src/daily_logs/service.php';
 require_once __DIR__ . '/../src/time_entries/service.php';
-require_once __DIR__ . '/../src/time_entries/today.php';
+require_once __DIR__ . '/../src/time_entries/save.php';
 
 use PHPUnit\Framework\TestCase;
 
-final class TimeEntryListEndpointTest extends TestCase
+final class TimeEntrySaveServiceTest extends TestCase
 {
     private \PDO $pdo;
 
@@ -62,64 +62,55 @@ final class TimeEntryListEndpointTest extends TestCase
         );
     }
 
-    public function testTodayTimeEntriesResponseReturnsEntriesInDescendingOrder(): void
+    public function testSaveRunningEntryUpdatesValuesWithoutEndingEntry(): void
     {
-        $activity = create_activity($this->pdo, 'user-1', 'Deep Work');
+        $runningEntry = start_time_entry(
+            $this->pdo,
+            'user-1',
+            '2026-05-20',
+            '09:00:00',
+        );
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
         $subtype = create_activity_subtype(
             $this->pdo,
             (int) $activity['id'],
             'user-1',
-            'Coding',
+            'Planning',
         );
-        add_past_time_entry(
+
+        $savedEntry = save_running_time_entry(
             $this->pdo,
             'user-1',
-            '2026-05-12',
-            '09:00:00',
-            '10:00:00',
-            'One',
+            '2026-05-20',
+            [
+                'activity_id' => (int) $activity['id'],
+                'activity_subtype_id' => (int) $subtype['id'],
+                'notes' => 'Daily planning',
+            ],
+        );
+
+        $this->assertSame((int) $runningEntry['id'], (int) $savedEntry['id']);
+        $this->assertNull($savedEntry['end']);
+        $this->assertSame('running', $savedEntry['state']);
+        $this->assertSame(
             (int) $activity['id'],
+            (int) $savedEntry['activity_id'],
+        );
+        $this->assertSame(
             (int) $subtype['id'],
+            (int) $savedEntry['activity_subtype_id'],
         );
-        start_time_entry($this->pdo, 'user-1', '2026-05-12', '10:15:00');
-
-        $response = build_today_time_entries_response(
-            $this->pdo,
-            ['id' => 'user-1'],
-            '2026-05-12',
-        );
-
-        $this->assertSame(200, $response['status']);
-        $this->assertTrue($response['body']['ok']);
-        $this->assertCount(2, $response['body']['entries']);
-        $this->assertSame(
-            '2026-05-12 10:15:00',
-            $response['body']['entries'][0]['start'],
-        );
-        $this->assertSame(
-            '2026-05-12 09:00:00',
-            $response['body']['entries'][1]['start'],
-        );
-        $this->assertSame(
-            'Deep Work',
-            $response['body']['entries'][1]['activity_name'],
-        );
-        $this->assertSame(
-            'Coding',
-            $response['body']['entries'][1]['activity_subtype_name'],
-        );
+        $this->assertSame('Daily planning', $savedEntry['notes']);
     }
 
-    public function testTodayTimeEntriesResponseReturnsEmptyEntriesWhenNoneExist(): void
+    public function testSaveRunningEntryRejectsBlankActivity(): void
     {
-        $response = build_today_time_entries_response(
-            $this->pdo,
-            ['id' => 'user-1'],
-            '2026-05-12',
-        );
+        start_time_entry($this->pdo, 'user-1', '2026-05-20', '09:00:00');
 
-        $this->assertSame(200, $response['status']);
-        $this->assertTrue($response['body']['ok']);
-        $this->assertSame([], $response['body']['entries']);
+        $this->expectException(\InvalidArgumentException::class);
+
+        save_running_time_entry($this->pdo, 'user-1', '2026-05-20', [
+            'notes' => 'Missing activity',
+        ]);
     }
 }
