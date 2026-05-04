@@ -32,6 +32,22 @@ final class TimeEntryListServiceTest extends TestCase
         );
 
         $this->pdo->exec(
+            'CREATE TABLE activities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
+            'CREATE TABLE activity_subtypes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                activity_id INTEGER NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
             'CREATE TABLE time_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 daily_log_id INTEGER NOT NULL,
@@ -72,6 +88,8 @@ final class TimeEntryListServiceTest extends TestCase
         $this->assertSame('2026-05-11 11:30:00', $entries[2]['start']);
         $this->assertNull($entries[2]['end']);
         $this->assertSame('running', $entries[2]['state']);
+        $this->assertArrayHasKey('activity_name', $entries[0]);
+        $this->assertNull($entries[0]['activity_name']);
     }
 
     public function testListTodayTimeEntriesDoesNotLeakOtherUsersEntries(): void
@@ -95,5 +113,32 @@ final class TimeEntryListServiceTest extends TestCase
 
         $this->assertCount(1, $entries);
         $this->assertSame('Mine', $entries[0]['notes']);
+    }
+
+    public function testListTodayTimeEntriesIncludesActivityLabelsWhenSet(): void
+    {
+        $activity = create_activity($this->pdo, 'user-1', 'Deep Work');
+        $subtype = create_activity_subtype(
+            $this->pdo,
+            (int) $activity['id'],
+            'user-1',
+            'Coding',
+        );
+
+        start_time_entry(
+            $this->pdo,
+            'user-1',
+            '2026-05-20',
+            '10:00:00',
+            'Focus block',
+            (int) $activity['id'],
+            (int) $subtype['id'],
+        );
+
+        $entries = list_today_time_entries($this->pdo, 'user-1', '2026-05-20');
+
+        $this->assertCount(1, $entries);
+        $this->assertSame('Deep Work', $entries[0]['activity_name']);
+        $this->assertSame('Coding', $entries[0]['activity_subtype_name']);
     }
 }

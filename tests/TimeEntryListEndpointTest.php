@@ -33,6 +33,22 @@ final class TimeEntryListEndpointTest extends TestCase
         );
 
         $this->pdo->exec(
+            'CREATE TABLE activities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
+            'CREATE TABLE activity_subtypes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                activity_id INTEGER NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
             'CREATE TABLE time_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 daily_log_id INTEGER NOT NULL,
@@ -68,6 +84,11 @@ final class TimeEntryListEndpointTest extends TestCase
             '2026-05-12 10:15:00',
             $response['body']['entries'][1]['start'],
         );
+        $this->assertArrayHasKey(
+            'activity_name',
+            $response['body']['entries'][0],
+        );
+        $this->assertNull($response['body']['entries'][0]['activity_name']);
     }
 
     public function testTodayTimeEntriesResponseReturnsEmptyEntriesWhenNoneExist(): void

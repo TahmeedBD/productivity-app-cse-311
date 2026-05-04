@@ -32,6 +32,22 @@ final class TimeEntryStartServiceTest extends TestCase
         );
 
         $this->pdo->exec(
+            'CREATE TABLE activities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
+            'CREATE TABLE activity_subtypes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                activity_id INTEGER NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
             'CREATE TABLE time_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 daily_log_id INTEGER NOT NULL,
@@ -135,6 +151,33 @@ final class TimeEntryStartServiceTest extends TestCase
         );
     }
 
+    public function testStartPersistsSelectedActivityAndSubtype(): void
+    {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+        $subtype = create_activity_subtype(
+            $this->pdo,
+            (int) $activity['id'],
+            'user-1',
+            'Coding',
+        );
+
+        $entry = start_time_entry(
+            $this->pdo,
+            'user-1',
+            '2026-05-09',
+            '09:00:00',
+            'Deep work',
+            (int) $activity['id'],
+            (int) $subtype['id'],
+        );
+
+        $this->assertSame((int) $activity['id'], (int) $entry['activity_id']);
+        $this->assertSame(
+            (int) $subtype['id'],
+            (int) $entry['activity_subtype_id'],
+        );
+    }
+
     private function countEntries(): int
     {
         return (int) $this->pdo
@@ -145,7 +188,7 @@ final class TimeEntryStartServiceTest extends TestCase
     private function findEntryById(int $entryId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT id, daily_log_id, start, end, state, notes FROM time_entries WHERE id = :id',
+            'SELECT id, daily_log_id, activity_id, activity_subtype_id, start, end, state, notes FROM time_entries WHERE id = :id',
         );
         $statement->execute([':id' => $entryId]);
 

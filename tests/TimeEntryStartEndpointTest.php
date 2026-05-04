@@ -33,6 +33,22 @@ final class TimeEntryStartEndpointTest extends TestCase
         );
 
         $this->pdo->exec(
+            'CREATE TABLE activities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
+            'CREATE TABLE activity_subtypes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                activity_id INTEGER NOT NULL,
+                name TEXT NOT NULL
+            )',
+        );
+
+        $this->pdo->exec(
             'CREATE TABLE time_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 daily_log_id INTEGER NOT NULL,
@@ -82,5 +98,38 @@ final class TimeEntryStartEndpointTest extends TestCase
             $response['body']['entry']['start'],
         );
         $this->assertSame('Missing start', $response['body']['entry']['notes']);
+    }
+
+    public function testStartEntryResponseReturnsSelectedActivityAndSubtype(): void
+    {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+        $subtype = create_activity_subtype(
+            $this->pdo,
+            (int) $activity['id'],
+            'user-1',
+            'Review',
+        );
+
+        $response = build_start_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'start' => '09:00:00',
+                'notes' => 'Deep work',
+                'activity_id' => $activity['id'],
+                'activity_subtype_id' => $subtype['id'],
+            ],
+            '2026-05-10',
+        );
+
+        $this->assertSame(201, $response['status']);
+        $this->assertSame(
+            (int) $activity['id'],
+            (int) $response['body']['entry']['activity_id'],
+        );
+        $this->assertSame(
+            (int) $subtype['id'],
+            (int) $response['body']['entry']['activity_subtype_id'],
+        );
     }
 }
