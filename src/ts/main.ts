@@ -364,7 +364,7 @@ function renderCurrentEntry(entries: TimeEntry[]): void {
       : `Started at ${formatClockTime(runningEntry.start)}`,
   );
   setFieldValue('#time-entry-notes', '');
-  setButtonText('#time-entry-start-button', 'End current + start new');
+  setButtonText('#time-entry-start-button', 'Start new');
   renderCurrentEntryState('Running', true);
 }
 
