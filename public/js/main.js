@@ -289,10 +289,11 @@ function renderCurrentEntry(entries) {
 		setButtonText('#time-entry-start-button', 'Start entry');
 		renderCurrentEntryState('Idle', false);
 
-		return;
+	const stopButton = document.querySelector('#time-entry-stop-button');
+	if (stopButton) {
+		stopButton.disabled = true;
 	}
 
-	const renderDuration = () => {
 		setElementText('#current-entry-duration', formatEntryDuration(runningEntry));
 	};
 
@@ -307,6 +308,11 @@ function renderCurrentEntry(entries) {
 	setFieldValue('#time-entry-notes', '');
 	setButtonText('#time-entry-start-button', 'End current + start new');
 	renderCurrentEntryState('Running', true);
+
+	const stopButton = document.querySelector('#time-entry-stop-button');
+	if (stopButton) {
+		stopButton.disabled = false;
+	}
 }
 
 function renderDailyLog(dailyLog) {
@@ -366,6 +372,76 @@ function bindTimeLogPage() {
 				showTimeLogMessage(message, 'danger');
 			} finally {
 				setButtonLoading(submitButton, false, 'Saving...');
+			}
+		});
+	}
+
+	const stopButton = document.querySelector('#time-entry-stop-button');
+
+	if (stopButton) {
+		stopButton.addEventListener('click', async () => {
+			clearTimeLogMessage();
+			setButtonLoading(stopButton, true, 'Stopping...');
+
+			try {
+				await fetchJson('/time-entries/end.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({}),
+				});
+
+				await loadTimeLogPage();
+				clearTimeLogMessage();
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: 'Unable to stop the entry right now.';
+				showTimeLogMessage(message, 'danger');
+			} finally {
+				setButtonLoading(stopButton, false, 'Stopping...');
+			}
+		});
+	}
+
+	const addPastForm = document.querySelector('#time-log-add-form');
+	const addPastButton = document.querySelector('#past-entry-add-button');
+
+	if (addPastForm) {
+		addPastForm.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			clearTimeLogMessage();
+			setButtonLoading(addPastButton, true, 'Adding...');
+
+			try {
+				const startRaw = document.querySelector('#past-entry-start')?.value ?? '';
+				const endRaw   = document.querySelector('#past-entry-end')?.value ?? '';
+				const notes    = document.querySelector('#past-entry-notes')?.value.trim() ?? '';
+
+				// <input type="time"> returns "HH:MM" — append ":00" for the API
+				const toHHMMSS = (v) => (v.length === 5 ? `${v}:00` : v);
+
+				await fetchJson('/time-entries/add.php', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						start: toHHMMSS(startRaw),
+						end:   toHHMMSS(endRaw),
+						...(notes ? { notes } : {}),
+					}),
+				});
+
+				addPastForm.reset();
+				await loadTimeLogPage();
+				clearTimeLogMessage();
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: 'Unable to add the entry right now.';
+				showTimeLogMessage(message, 'danger');
+			} finally {
+				setButtonLoading(addPastButton, false, 'Adding...');
 			}
 		});
 	}

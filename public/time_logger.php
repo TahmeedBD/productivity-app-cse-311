@@ -51,6 +51,9 @@ require_once 'header.php';
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
                             Pause
                         </button>
+                        <button id="time-entry-stop-button" type="button" class="btn time-log-stop-btn" disabled data-default-label="Stop">
+                            Stop
+                        </button>
                         <button id="time-entry-start-button" class="btn time-log-primary-action" type="submit" data-default-label="Start entry">
                             Start entry
                         </button>
@@ -88,7 +91,7 @@ require_once 'header.php';
     <section class="card card-sm card-featured time-log-add-card">
         <h2 class="text-h2 time-log-add-title">Add Past Entry</h2>
 
-        <form class="time-log-add-form" novalidate>
+        <form id="time-log-add-form" class="time-log-add-form" novalidate>
             <div class="form-group">
                 <label class="form-label" for="past-entry-activity">Activity</label>
                 <select id="past-entry-activity" class="select" disabled aria-disabled="true" title="Coming soon">
@@ -99,7 +102,7 @@ require_once 'header.php';
             <div class="form-group">
                 <label class="form-label" for="past-entry-start">Start Time</label>
                 <div class="time-log-input-icon-wrap">
-                    <input id="past-entry-start" class="input time-log-input-has-icon" type="time" disabled>
+                    <input id="past-entry-start" class="input time-log-input-has-icon" type="time">
                     <span class="time-log-input-icon" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     </span>
@@ -109,7 +112,7 @@ require_once 'header.php';
             <div class="form-group">
                 <label class="form-label" for="past-entry-end">End Time</label>
                 <div class="time-log-input-icon-wrap">
-                    <input id="past-entry-end" class="input time-log-input-has-icon" type="time" disabled>
+                    <input id="past-entry-end" class="input time-log-input-has-icon" type="time">
                     <span class="time-log-input-icon" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     </span>
@@ -118,11 +121,11 @@ require_once 'header.php';
 
             <div class="form-group time-log-add-notes">
                 <label class="form-label" for="past-entry-notes">Notes</label>
-                <input id="past-entry-notes" class="input" type="text" placeholder="Optional" disabled>
+                <input id="past-entry-notes" class="input" type="text" placeholder="Optional">
             </div>
 
             <div class="time-log-add-button-wrap">
-                <button class="btn time-log-add-button" type="button" disabled aria-disabled="true" title="Coming soon">
+                <button id="past-entry-add-button" class="btn time-log-add-button" type="submit" data-default-label="+ Add Entry">
                     + Add Entry
                 </button>
             </div>
