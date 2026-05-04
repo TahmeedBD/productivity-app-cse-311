@@ -3,12 +3,35 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/service.php';
 
-function build_start_time_entry_response(
+function save_running_time_entry(
+    \PDO $pdo,
+    string $userId,
+    string $date,
+    array $payload,
+): array {
+    $dailyLog = get_or_create_daily_log($pdo, $userId, $date);
+    $runningEntry = find_running_time_entry_for_daily_log(
+        $pdo,
+        (int) $dailyLog['id'],
+    );
+
+    if ($runningEntry === null) {
+        throw new \InvalidArgumentException('No running entry to save.');
+    }
+
+    return apply_time_entry_details(
+        $pdo,
+        $userId,
+        (int) $runningEntry['id'],
+        $payload,
+    );
+}
+
+function build_save_running_time_entry_response(
     \PDO $pdo,
     array $currentUser,
     array $payload,
     ?string $date = null,
-    ?string $currentTime = null,
 ): array {
     $userId = (string) ($currentUser['id'] ?? '');
 
@@ -16,8 +39,6 @@ function build_start_time_entry_response(
         throw new \InvalidArgumentException('Current user id is required.');
     }
 
-    $startTime = trim((string) ($payload['start'] ?? ''));
-    $notes = (string) ($payload['notes'] ?? '');
     $activityId = filter_var(
         $payload['activity_id'] ?? null,
         FILTER_VALIDATE_INT,
@@ -28,19 +49,13 @@ function build_start_time_entry_response(
         FILTER_VALIDATE_INT,
         ['options' => ['min_range' => 1]],
     );
-
-    // TODO: Handle case where client is in a different timezone than the server.
-
-    if ($startTime === '') {
-        $startTime = $currentTime ?? date('H:i:s');
-    }
+    $notes = (string) ($payload['notes'] ?? '');
 
     try {
-        $entry = start_time_entry(
+        $entry = save_running_time_entry(
             $pdo,
             $userId,
             $date ?? date('Y-m-d'),
-            $startTime,
             [
                 'activity_id' => $activityId === false ? null : $activityId,
                 'activity_subtype_id' =>
@@ -48,14 +63,6 @@ function build_start_time_entry_response(
                 'notes' => $notes,
             ],
         );
-
-        return [
-            'status' => 201,
-            'body' => [
-                'ok' => true,
-                'entry' => $entry,
-            ],
-        ];
     } catch (\InvalidArgumentException $exception) {
         return [
             'status' => 422,
@@ -65,4 +72,12 @@ function build_start_time_entry_response(
             ],
         ];
     }
+
+    return [
+        'status' => 200,
+        'body' => [
+            'ok' => true,
+            'entry' => $entry,
+        ],
+    ];
 }

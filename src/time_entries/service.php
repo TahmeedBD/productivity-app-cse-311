@@ -92,7 +92,7 @@ function list_time_entries_for_daily_log(\PDO $pdo, int $dailyLogId): array
          LEFT JOIN activities a ON a.id = te.activity_id
          LEFT JOIN activity_subtypes ast ON ast.id = te.activity_subtype_id
          WHERE te.daily_log_id = :daily_log_id
-         ORDER BY te.start ASC, te.id ASC',
+            ORDER BY te.start DESC, te.id DESC',
     );
     $statement->execute([':daily_log_id' => $dailyLogId]);
 
@@ -111,8 +111,13 @@ function validate_time_entry_classification(
     string $userId,
     ?int $activityId,
     ?int $activitySubtypeId,
+    bool $activityRequired = false,
 ): array {
     if ($activityId === null && $activitySubtypeId === null) {
+        if ($activityRequired) {
+            throw new \InvalidArgumentException('Activity is required.');
+        }
+
         return [
             'activity_id' => null,
             'activity_subtype_id' => null,
@@ -148,24 +153,81 @@ function validate_time_entry_classification(
     ];
 }
 
+function normalize_current_entry_payload(array $payload): array
+{
+    return [
+        'activity_id' => isset($payload['activity_id'])
+            ? (int) $payload['activity_id']
+            : null,
+        'activity_subtype_id' => isset($payload['activity_subtype_id'])
+            ? (int) $payload['activity_subtype_id']
+            : null,
+        'notes' => (string) ($payload['notes'] ?? ''),
+    ];
+}
+
+function apply_time_entry_details(
+    \PDO $pdo,
+    string $userId,
+    int $entryId,
+    array $payload,
+    bool $activityRequired = true,
+): array {
+    $normalizedPayload = normalize_current_entry_payload($payload);
+    $classification = validate_time_entry_classification(
+        $pdo,
+        $userId,
+        $normalizedPayload['activity_id'],
+        $normalizedPayload['activity_subtype_id'],
+        $activityRequired,
+    );
+
+    $statement = $pdo->prepare(
+        'UPDATE time_entries
+         SET activity_id = :activity_id,
+             activity_subtype_id = :activity_subtype_id,
+             notes = :notes
+         WHERE id = :id',
+    );
+    $statement->execute([
+        ':activity_id' => $classification['activity_id'],
+        ':activity_subtype_id' => $classification['activity_subtype_id'],
+        ':notes' => $normalizedPayload['notes'],
+        ':id' => $entryId,
+    ]);
+
+    $updatedEntry = find_time_entry_by_id($pdo, $entryId);
+
+    if ($updatedEntry === null) {
+        throw new \RuntimeException('Failed to reload the updated entry.');
+    }
+
+    return $updatedEntry;
+}
+
+function find_running_time_entry_for_daily_log(
+    \PDO $pdo,
+    int $dailyLogId,
+): ?array {
+    $latestEntry = find_latest_time_entry_for_daily_log($pdo, $dailyLogId);
+
+    if ($latestEntry === null || $latestEntry['end'] !== null) {
+        return null;
+    }
+
+    return $latestEntry;
+}
+
 function start_time_entry(
     \PDO $pdo,
     string $userId,
     string $date,
     string $startTime,
-    string $notes = '',
-    ?int $activityId = null,
-    ?int $activitySubtypeId = null,
+    array $currentEntryPayload = [],
 ): array {
     $dailyLog = get_or_create_daily_log($pdo, $userId, $date);
     $wakeTime = (string) $dailyLog['wake_time'];
     $sleepTime = (string) $dailyLog['sleep_time'];
-    $classification = validate_time_entry_classification(
-        $pdo,
-        $userId,
-        $activityId,
-        $activitySubtypeId,
-    );
 
     if (
         !is_entry_start_within_awake_window($startTime, $wakeTime, $sleepTime)
@@ -206,6 +268,13 @@ function start_time_entry(
                     );
                 }
 
+                apply_time_entry_details(
+                    $pdo,
+                    $userId,
+                    (int) $latestEntry['id'],
+                    $currentEntryPayload,
+                );
+
                 $update = $pdo->prepare(
                     'UPDATE time_entries
                      SET end = :end, state = :state
@@ -240,8 +309,6 @@ function start_time_entry(
         $insert = $pdo->prepare(
             'INSERT INTO time_entries (
                 daily_log_id,
-                activity_id,
-                activity_subtype_id,
                 start,
                 end,
                 state,
@@ -249,8 +316,6 @@ function start_time_entry(
              )
              VALUES (
                 :daily_log_id,
-                :activity_id,
-                :activity_subtype_id,
                 :start,
                 NULL,
                 :state,
@@ -259,11 +324,9 @@ function start_time_entry(
         );
         $insert->execute([
             ':daily_log_id' => $dailyLog['id'],
-            ':activity_id' => $classification['activity_id'],
-            ':activity_subtype_id' => $classification['activity_subtype_id'],
             ':start' => $startTimestamp,
             ':state' => 'running',
-            ':notes' => $notes,
+            ':notes' => '',
         ]);
 
         $createdEntry = find_time_entry_by_id($pdo, (int) $pdo->lastInsertId());

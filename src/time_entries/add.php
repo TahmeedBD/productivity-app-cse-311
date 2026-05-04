@@ -21,6 +21,7 @@ function add_past_time_entry(
         $userId,
         $activityId,
         $activitySubtypeId,
+        true,
     );
 
     if (

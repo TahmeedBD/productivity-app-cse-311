@@ -8,6 +8,7 @@ function end_time_entry(
     string $userId,
     string $date,
     string $endTime,
+    array $currentEntryPayload = [],
 ): array {
     $dailyLog = get_or_create_daily_log($pdo, $userId, $date);
     $sleepTime = (string) $dailyLog['sleep_time'];
@@ -25,12 +26,12 @@ function end_time_entry(
         );
     }
 
-    $latestEntry = find_latest_time_entry_for_daily_log(
+    $latestEntry = find_running_time_entry_for_daily_log(
         $pdo,
         (int) $dailyLog['id'],
     );
 
-    if ($latestEntry === null || $latestEntry['end'] !== null) {
+    if ($latestEntry === null) {
         throw new \InvalidArgumentException('No running entry to end.');
     }
 
@@ -45,6 +46,13 @@ function end_time_entry(
     }
 
     $endTimestamp = combine_date_and_time($date, $endTime);
+
+    apply_time_entry_details(
+        $pdo,
+        $userId,
+        (int) $latestEntry['id'],
+        $currentEntryPayload,
+    );
 
     $statement = $pdo->prepare(
         'UPDATE time_entries
@@ -80,6 +88,17 @@ function build_end_time_entry_response(
     }
 
     $endTime = trim((string) ($payload['end'] ?? ''));
+    $notes = (string) ($payload['notes'] ?? '');
+    $activityId = filter_var(
+        $payload['activity_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]],
+    );
+    $activitySubtypeId = filter_var(
+        $payload['activity_subtype_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]],
+    );
 
     if ($endTime === '') {
         $endTime = $currentTime ?? date('H:i:s');
@@ -88,7 +107,12 @@ function build_end_time_entry_response(
     $resolvedDate = $date ?? date('Y-m-d');
 
     try {
-        $entry = end_time_entry($pdo, $userId, $resolvedDate, $endTime);
+        $entry = end_time_entry($pdo, $userId, $resolvedDate, $endTime, [
+            'activity_id' => $activityId === false ? null : $activityId,
+            'activity_subtype_id' =>
+                $activitySubtypeId === false ? null : $activitySubtypeId,
+            'notes' => $notes,
+        ]);
     } catch (\InvalidArgumentException $exception) {
         return [
             'status' => 422,
