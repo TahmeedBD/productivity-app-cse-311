@@ -42,7 +42,7 @@ require_once 'header.php';
                         </div>
                         <div class="form-group time-log-form-notes-span">
                             <label class="form-label" for="time-entry-notes">Notes</label>
-                            <input id="time-entry-notes" class="input time-log-notes-input" type="text" placeholder="What are you working on?" autocomplete="off">
+                            <textarea id="time-entry-notes" class="textarea time-log-notes-input" placeholder="What are you working on?" autocomplete="off"></textarea>
                         </div>
                     </div>
 
@@ -68,8 +68,9 @@ require_once 'header.php';
             <table class="table time-log-table">
                 <thead>
                     <tr>
-                        <th scope="col">Start</th>
-                        <th scope="col">End</th>
+                        <th scope="col">Time</th>
+                        <th scope="col">Activity</th>
+                        <th scope="col">Subtype</th>
                         <th scope="col">Duration</th>
                         <th scope="col">State</th>
                         <th scope="col">Notes</th>
@@ -77,7 +78,7 @@ require_once 'header.php';
                 </thead>
                 <tbody id="time-entries-body">
                     <tr>
-                        <td colspan="5" class="time-log-empty">Loading today's entries…</td>
+                        <td colspan="6" class="time-log-empty">Loading today's entries…</td>
                     </tr>
                 </tbody>
             </table>
@@ -91,6 +92,13 @@ require_once 'header.php';
             <div class="form-group">
                 <label class="form-label" for="past-entry-activity">Activity</label>
                 <select id="past-entry-activity" class="select" disabled aria-disabled="true" title="Coming soon">
+                    <option value="">Select…</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="past-entry-subtype">Subtype</label>
+                <select id="past-entry-subtype" class="select" disabled aria-disabled="true" title="Coming soon">
                     <option value="">Select…</option>
                 </select>
             </div>
@@ -113,11 +121,6 @@ require_once 'header.php';
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     </span>
                 </div>
-            </div>
-
-            <div class="form-group time-log-add-notes">
-                <label class="form-label" for="past-entry-notes">Notes</label>
-                <input id="past-entry-notes" class="input" type="text" placeholder="Optional">
             </div>
 
             <div class="time-log-add-button-wrap">

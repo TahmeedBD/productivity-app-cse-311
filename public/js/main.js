@@ -125,6 +125,41 @@ function setButtonText(selector, text) {
     button.textContent = text;
     button.dataset.defaultLabel = text;
 }
+function setSelectDisabledState(select, isDisabled, title = '') {
+    if (!select) {
+        return;
+    }
+    select.disabled = isDisabled;
+    select.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+    if (title) {
+        select.title = title;
+        return;
+    }
+    select.removeAttribute('title');
+}
+function populateSelectOptions(select, placeholder, items, getValue, getLabel) {
+    if (!select) {
+        return;
+    }
+    select.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = placeholder;
+    select.append(placeholderOption);
+    for (const item of items) {
+        const option = document.createElement('option');
+        option.value = getValue(item);
+        option.textContent = getLabel(item);
+        select.append(option);
+    }
+}
+function parseSelectedId(select) {
+    if (!select || !select.value) {
+        return null;
+    }
+    const parsed = Number(select.value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 function renderCurrentEntryState(label, isRunning) {
     const stateElement = document.querySelector('#current-entry-state');
     if (!stateElement) {
@@ -253,6 +288,47 @@ function renderDailyLog(dailyLog) {
     setElementText('#time-log-day-pill', formatDayLabel(dailyLog.date));
     setElementText('#time-log-schedule', `${formatClockTime(dailyLog.wake_time, true)} - ${formatClockTime(dailyLog.sleep_time, true)}`);
 }
+function loadActivityOptions() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const response = yield fetchJson('/activities/list.php');
+        const startActivitySelect = document.querySelector('#time-entry-activity');
+        const pastActivitySelect = document.querySelector('#past-entry-activity');
+        const hasActivities = response.activities.length > 0;
+        populateSelectOptions(startActivitySelect, hasActivities ? 'Select...' : 'No activities yet', response.activities, (activity) => String(activity.id), (activity) => activity.name);
+        populateSelectOptions(pastActivitySelect, hasActivities ? 'Select...' : 'No activities yet', response.activities, (activity) => String(activity.id), (activity) => activity.name);
+        setSelectDisabledState(startActivitySelect, !hasActivities, hasActivities ? '' : 'Create an activity first');
+        setSelectDisabledState(pastActivitySelect, !hasActivities, hasActivities ? '' : 'Create an activity first');
+    });
+}
+function loadSubtypeOptions(activityId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const subtypeSelect = document.querySelector('#time-entry-subtype');
+        if (!activityId) {
+            populateSelectOptions(subtypeSelect, 'Select activity first', [], () => '', () => '');
+            setSelectDisabledState(subtypeSelect, true, 'Select an activity first');
+            return;
+        }
+        const response = yield fetchJson(`/activity-subtypes/list.php?activity_id=${encodeURIComponent(String(activityId))}`);
+        const hasSubtypes = response.subtypes.length > 0;
+        populateSelectOptions(subtypeSelect, hasSubtypes ? 'Select...' : 'No subtypes yet', response.subtypes, (subtype) => String(subtype.id), (subtype) => subtype.name);
+        setSelectDisabledState(subtypeSelect, !hasSubtypes, hasSubtypes ? '' : 'No subtypes available for this activity');
+    });
+}
+function bindActivitySubtypeSelects() {
+    const activitySelect = document.querySelector('#time-entry-activity');
+    if (!activitySelect) {
+        return;
+    }
+    activitySelect.addEventListener('change', () => {
+        void loadSubtypeOptions(parseSelectedId(activitySelect)).catch((error) => {
+            const message = error instanceof Error
+                ? error.message
+                : 'Unable to load subtypes right now.';
+            showTimeLogMessage(message, 'danger');
+            void loadSubtypeOptions(null);
+        });
+    });
+}
 function loadTimeLogPage() {
     return __awaiter(this, void 0, void 0, function* () {
         const [dailyLogResponse, entriesResponse] = yield Promise.all([
@@ -271,7 +347,10 @@ function bindTimeLogPage() {
     }
     const form = document.querySelector('#time-entry-start-form');
     const notesField = document.querySelector('#time-entry-notes');
+    const activityField = document.querySelector('#time-entry-activity');
+    const subtypeField = document.querySelector('#time-entry-subtype');
     const submitButton = document.querySelector('#time-entry-start-button');
+    bindActivitySubtypeSelects();
     if (form) {
         form.addEventListener('submit', (event) => __awaiter(this, void 0, void 0, function* () {
             var _a;
@@ -280,12 +359,24 @@ function bindTimeLogPage() {
             setButtonLoading(submitButton, true, 'Saving...');
             try {
                 const notes = (_a = notesField === null || notesField === void 0 ? void 0 : notesField.value.trim()) !== null && _a !== void 0 ? _a : '';
+                const activityId = parseSelectedId(activityField);
+                const activitySubtypeId = parseSelectedId(subtypeField);
+                const payload = {};
+                if (notes) {
+                    payload.notes = notes;
+                }
+                if (activityId !== null) {
+                    payload.activity_id = activityId;
+                }
+                if (activitySubtypeId !== null) {
+                    payload.activity_subtype_id = activitySubtypeId;
+                }
                 yield fetchJson('/time-entries/start.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(notes ? { notes } : {}),
+                    body: JSON.stringify(payload),
                 });
                 yield loadTimeLogPage();
                 clearTimeLogMessage();
@@ -301,7 +392,11 @@ function bindTimeLogPage() {
             }
         }));
     }
-    void loadTimeLogPage().catch((error) => {
+    void Promise.all([
+        loadActivityOptions(),
+        loadSubtypeOptions(null),
+        loadTimeLogPage(),
+    ]).catch((error) => {
         const message = error instanceof Error
             ? error.message
             : 'Unable to load the time log right now.';

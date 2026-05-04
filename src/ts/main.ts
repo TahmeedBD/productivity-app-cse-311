@@ -8,9 +8,23 @@ type DailyLog = {
   sleep_time: string;
 };
 
+type Activity = {
+  id: number | string;
+  user_id: string;
+  name: string;
+};
+
+type ActivitySubtype = {
+  id: number | string;
+  activity_id: number | string;
+  name: string;
+};
+
 type TimeEntry = {
   id: number | string;
   daily_log_id: number | string;
+  activity_id?: number | string | null;
+  activity_subtype_id?: number | string | null;
   start: string;
   end: string | null;
   state: string;
@@ -25,6 +39,16 @@ type ApiError = {
 type DailyLogResponse = {
   ok: true;
   daily_log: DailyLog;
+};
+
+type ActivitiesResponse = {
+  ok: true;
+  activities: Activity[];
+};
+
+type ActivitySubtypesResponse = {
+  ok: true;
+  subtypes: ActivitySubtype[];
 };
 
 type TimeEntriesResponse = {
@@ -198,6 +222,62 @@ function setButtonText(selector: string, text: string): void {
 
   button.textContent = text;
   button.dataset.defaultLabel = text;
+}
+
+function setSelectDisabledState(
+  select: HTMLSelectElement | null,
+  isDisabled: boolean,
+  title = '',
+): void {
+  if (!select) {
+    return;
+  }
+
+  select.disabled = isDisabled;
+  select.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+
+  if (title) {
+    select.title = title;
+    return;
+  }
+
+  select.removeAttribute('title');
+}
+
+function populateSelectOptions<T>(
+  select: HTMLSelectElement | null,
+  placeholder: string,
+  items: T[],
+  getValue: (item: T) => string,
+  getLabel: (item: T) => string,
+): void {
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML = '';
+
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = placeholder;
+  select.append(placeholderOption);
+
+  for (const item of items) {
+    const option = document.createElement('option');
+    option.value = getValue(item);
+    option.textContent = getLabel(item);
+    select.append(option);
+  }
+}
+
+function parseSelectedId(select: HTMLSelectElement | null): number | null {
+  if (!select || !select.value) {
+    return null;
+  }
+
+  const parsed = Number(select.value);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function renderCurrentEntryState(label: string, isRunning: boolean): void {
@@ -376,6 +456,104 @@ function renderDailyLog(dailyLog: DailyLog): void {
   );
 }
 
+async function loadActivityOptions(): Promise<void> {
+  const response = await fetchJson<ActivitiesResponse>('/activities/list.php');
+  const startActivitySelect = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const pastActivitySelect = document.querySelector<HTMLSelectElement>(
+    '#past-entry-activity',
+  );
+  const hasActivities = response.activities.length > 0;
+
+  populateSelectOptions(
+    startActivitySelect,
+    hasActivities ? 'Select...' : 'No activities yet',
+    response.activities,
+    (activity) => String(activity.id),
+    (activity) => activity.name,
+  );
+  populateSelectOptions(
+    pastActivitySelect,
+    hasActivities ? 'Select...' : 'No activities yet',
+    response.activities,
+    (activity) => String(activity.id),
+    (activity) => activity.name,
+  );
+
+  setSelectDisabledState(
+    startActivitySelect,
+    !hasActivities,
+    hasActivities ? '' : 'Create an activity first',
+  );
+  setSelectDisabledState(
+    pastActivitySelect,
+    !hasActivities,
+    hasActivities ? '' : 'Create an activity first',
+  );
+}
+
+async function loadSubtypeOptions(activityId: number | null): Promise<void> {
+  const subtypeSelect = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
+
+  if (!activityId) {
+    populateSelectOptions(
+      subtypeSelect,
+      'Select activity first',
+      [],
+      () => '',
+      () => '',
+    );
+    setSelectDisabledState(subtypeSelect, true, 'Select an activity first');
+
+    return;
+  }
+
+  const response = await fetchJson<ActivitySubtypesResponse>(
+    `/activity-subtypes/list.php?activity_id=${encodeURIComponent(String(activityId))}`,
+  );
+  const hasSubtypes = response.subtypes.length > 0;
+
+  populateSelectOptions(
+    subtypeSelect,
+    hasSubtypes ? 'Select...' : 'No subtypes yet',
+    response.subtypes,
+    (subtype) => String(subtype.id),
+    (subtype) => subtype.name,
+  );
+  setSelectDisabledState(
+    subtypeSelect,
+    !hasSubtypes,
+    hasSubtypes ? '' : 'No subtypes available for this activity',
+  );
+}
+
+function bindActivitySubtypeSelects(): void {
+  const activitySelect = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+
+  if (!activitySelect) {
+    return;
+  }
+
+  activitySelect.addEventListener('change', () => {
+    void loadSubtypeOptions(parseSelectedId(activitySelect)).catch(
+      (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Unable to load subtypes right now.';
+
+        showTimeLogMessage(message, 'danger');
+        void loadSubtypeOptions(null);
+      },
+    );
+  });
+}
+
 async function loadTimeLogPage(): Promise<void> {
   const [dailyLogResponse, entriesResponse] = await Promise.all([
     fetchJson<DailyLogResponse>('/daily-log/today.php'),
@@ -398,10 +576,18 @@ function bindTimeLogPage(): void {
     '#time-entry-start-form',
   );
   const notesField =
-    document.querySelector<HTMLTextAreaElement>('#time-entry-notes');
+    document.querySelector<HTMLInputElement>('#time-entry-notes');
+  const activityField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const subtypeField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
   const submitButton = document.querySelector<HTMLButtonElement>(
     '#time-entry-start-button',
   );
+
+  bindActivitySubtypeSelects();
 
   if (form) {
     form.addEventListener('submit', async (event) => {
@@ -411,13 +597,28 @@ function bindTimeLogPage(): void {
 
       try {
         const notes = notesField?.value.trim() ?? '';
+        const activityId = parseSelectedId(activityField);
+        const activitySubtypeId = parseSelectedId(subtypeField);
+        const payload: Record<string, string | number> = {};
+
+        if (notes) {
+          payload.notes = notes;
+        }
+
+        if (activityId !== null) {
+          payload.activity_id = activityId;
+        }
+
+        if (activitySubtypeId !== null) {
+          payload.activity_subtype_id = activitySubtypeId;
+        }
 
         await fetchJson<StartEntryResponse>('/time-entries/start.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(notes ? { notes } : {}),
+          body: JSON.stringify(payload),
         });
 
         await loadTimeLogPage();
@@ -434,7 +635,11 @@ function bindTimeLogPage(): void {
     });
   }
 
-  void loadTimeLogPage().catch((error: unknown) => {
+  void Promise.all([
+    loadActivityOptions(),
+    loadSubtypeOptions(null),
+    loadTimeLogPage(),
+  ]).catch((error: unknown) => {
     const message =
       error instanceof Error
         ? error.message

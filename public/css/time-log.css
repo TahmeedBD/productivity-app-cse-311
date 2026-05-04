@@ -127,6 +127,13 @@
   color: var(--color-text);
 }
 
+.time-log-notes-input {
+  min-height: 140px;
+  height: auto;
+  resize: none;
+  padding: var(--space-3);
+}
+
 .time-log-select:focus,
 .time-log-notes-input:focus {
   border-color: var(--color-primary);
