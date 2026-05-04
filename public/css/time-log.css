@@ -1,0 +1,384 @@
+/* =============================================================
+   time-log.css — Time Log page styles
+   ============================================================= */
+
+/* ── Page ──────────────────────────────────────────────────── */
+.time-log-body {
+  background: var(--tl-page-bg, #120d0b);
+}
+
+.time-log-page {
+  display: grid;
+  gap: var(--space-6);
+  padding-bottom: var(--space-8);
+}
+
+/* ── Page heading ───────────────────────────────────────────── */
+.time-log-page-heading {
+  margin-bottom: var(--space-2);
+}
+
+/* ── Hero card ──────────────────────────────────────────────── */
+.time-log-hero {
+  border: 1px solid var(--tl-warm-border, #8c6239);
+  background: var(--color-surface);
+  background-image: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(140, 98, 57, 0.08) 0%,
+    transparent 70%
+  );
+  border-radius: var(--radius-lg);
+  padding: 0;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35)),
+    var(--shadow-card);
+}
+
+.time-log-hero-body {
+  display: grid;
+  align-items: stretch;
+}
+
+/* Timer panel — left half */
+.time-log-timer-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  border-right: 1px solid var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+}
+
+.time-log-timer {
+  font-size: 64px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--tl-timer-display, #ffb380);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Running / idle state indicator */
+.time-log-running-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tl-status-mint, #4ade80);
+}
+
+.time-log-running-state.is-idle {
+  color: var(--color-text-sub);
+}
+
+.time-log-running-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.time-log-running-state:not(.is-idle) .time-log-running-dot {
+  animation: time-log-pulse 1.6s ease-in-out infinite;
+}
+
+/* Form panel — right half */
+.time-log-hero-right {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+}
+
+.time-log-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+}
+
+.time-log-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.time-log-form-notes-span {
+  grid-column: span 2;
+}
+
+/* Action buttons row */
+.time-log-hero-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+}
+
+.time-log-pause-btn {
+  background: transparent !important;
+  border: 1.5px solid var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+
+.time-log-pause-btn:hover {
+  background: var(--color-surface-alt) !important;
+}
+
+.time-log-primary-action {
+  background: var(--tl-timer-display, #ffb380) !important;
+  border: 1.5px solid var(--tl-timer-display, #ffb380) !important;
+  color: var(--tl-cta-ink, #120d0b) !important;
+}
+
+.time-log-primary-action:hover {
+  filter: brightness(1.08);
+}
+
+/* ── Form field overrides inside hero ───────────────────────── */
+.time-log-select,
+.time-log-notes-input {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.time-log-select:focus,
+.time-log-notes-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Today's Entries section ────────────────────────────────── */
+.time-log-section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.time-log-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Table wrapper */
+.time-log-page .table-wrap {
+  border: 1px solid var(--tl-warm-border, #8c6239);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+}
+
+/* Table headers — teal accent color */
+.time-log-table.table th {
+  color: var(--color-accent);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+  white-space: nowrap;
+}
+
+/* Uniform rows — no alternating */
+.time-log-table.table tbody tr {
+  background: var(--color-surface);
+}
+
+.time-log-table.table tbody tr:nth-child(even) {
+  background: var(--color-surface);
+}
+
+.time-log-table.table tbody tr:hover td {
+  background: var(--color-surface-up);
+}
+
+/* Running row highlight */
+.time-log-entry-row.is-running td,
+.time-log-entry-row.is-running:hover td {
+  background: var(--color-surface-alt);
+}
+
+.time-log-table.table td {
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.time-log-table.table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Duration cell */
+.time-log-duration-cell {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.time-log-duration-cell.is-running {
+  color: var(--tl-timer-display, #ffb380);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Notes cell */
+.time-log-notes-cell {
+  max-width: 260px;
+  color: var(--color-text-sub);
+  overflow-wrap: anywhere;
+}
+
+/* Empty state */
+.time-log-empty {
+  text-align: center;
+  color: var(--color-primary);
+  padding: var(--space-5) 0;
+}
+
+/* Actions column */
+.time-log-actions-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Add Past Entry card ─────────────────────────────────────── */
+.time-log-add-card {
+  border: 1px solid var(--tl-warm-border, #8c6239);
+  background: var(--color-surface);
+  background-image: radial-gradient(
+    ellipse at 0% 100%,
+    rgba(140, 98, 57, 0.06) 0%,
+    transparent 60%
+  );
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 1px var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35)),
+    var(--shadow-card);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.time-log-add-title {
+  margin-bottom: var(--space-1);
+}
+
+.time-log-add-form {
+  display: grid;
+  gap: var(--space-4);
+  align-items: end;
+}
+
+/* Field overrides inside add form */
+.time-log-add-form .input,
+.time-log-add-form .select {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.time-log-add-form .input:focus,
+.time-log-add-form .select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+/* Suppress native browser chrome on time inputs */
+.time-log-add-form input[type='time'] {
+  appearance: none;
+  -webkit-appearance: none;
+  border-color: var(--color-border-strong) !important;
+  outline: none;
+  color-scheme: dark;
+}
+
+.time-log-add-form input[type='time']::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+/* Clock icon wrapper */
+.time-log-input-icon-wrap {
+  position: relative;
+}
+
+.time-log-input-has-icon {
+  padding-right: var(--space-7);
+}
+
+.time-log-input-icon {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  display: flex;
+}
+
+/* Add Entry button */
+.time-log-add-button-wrap {
+  display: flex;
+  align-items: flex-end;
+}
+
+.time-log-add-button {
+  width: 100%;
+  background: var(--tl-add-button-bg, #3d342c) !important;
+  border: 1.5px solid var(--tl-add-button-bg, #3d342c) !important;
+  color: var(--color-text-sub) !important;
+}
+
+.time-log-add-button:hover {
+  background: var(--tl-add-button-hover, #4a4036) !important;
+  border-color: var(--tl-add-button-hover, #4a4036) !important;
+  color: var(--color-text) !important;
+}
+
+/* ── Alert message ─────────────────────────────────────────── */
+.time-log-message {
+  margin-bottom: 0;
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes time-log-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+/* ── Responsive: desktop two-column hero ───────────────────── */
+@media (min-width: 900px) {
+  .time-log-hero-body {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  .time-log-add-form {
+    grid-template-columns: 2fr 1.5fr 1.5fr 3fr 1.5fr;
+  }
+}
+
+/* ── Responsive: mobile ─────────────────────────────────────── */
+@media (max-width: 899px) {
+  .time-log-timer-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--tl-warm-border-soft, rgba(140, 98, 57, 0.35));
+    padding: var(--space-5);
+  }
+
+  .time-log-timer {
+    font-size: 48px;
+  }
+
+  .time-log-add-button {
+    width: 100%;
+  }
+}

@@ -10,12 +10,16 @@
         : 'Productivity Tracker' ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=<?= ASSET_VERSION ?>">
     <?php if (isset($pageCSS)): ?>
-        <link rel="stylesheet" href="/css/<?= htmlspecialchars($pageCSS) ?>">
+        <link rel="stylesheet" href="/css/<?= htmlspecialchars(
+            $pageCSS,
+        ) ?>?v=<?= ASSET_VERSION ?>">
     <?php endif; ?>
 </head>
-<body>
+<body<?= isset($bodyClass)
+    ? ' class="' . htmlspecialchars($bodyClass) . '"'
+    : '' ?>>
     <nav class="navbar" role="navigation" aria-label="Main navigation">
         <div class="container nav-content">
             <a href="/" class="nav-logo">

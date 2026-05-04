@@ -56,6 +56,10 @@ textarea {
   font-size: inherit;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 /* ── Typography Scale ────────────────────────────────────── */
 .text-h1 {
   font-size: var(--font-size-h1);
