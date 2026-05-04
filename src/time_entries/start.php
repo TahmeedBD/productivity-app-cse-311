@@ -18,6 +18,16 @@ function build_start_time_entry_response(
 
     $startTime = trim((string) ($payload['start'] ?? ''));
     $notes = (string) ($payload['notes'] ?? '');
+    $activityId = filter_var(
+        $payload['activity_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]],
+    );
+    $activitySubtypeId = filter_var(
+        $payload['activity_subtype_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]],
+    );
 
     // TODO: Handle case where client is in a different timezone than the server.
 
@@ -32,6 +42,8 @@ function build_start_time_entry_response(
             $date ?? date('Y-m-d'),
             $startTime,
             $notes,
+            $activityId === false ? null : $activityId,
+            $activitySubtypeId === false ? null : $activitySubtypeId,
         );
 
         return [

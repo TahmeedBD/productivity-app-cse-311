@@ -10,10 +10,18 @@ function add_past_time_entry(
     string $startTime,
     string $endTime,
     string $notes = '',
+    ?int $activityId = null,
+    ?int $activitySubtypeId = null,
 ): array {
     $dailyLog = get_or_create_daily_log($pdo, $userId, $date);
     $wakeTime = (string) $dailyLog['wake_time'];
     $sleepTime = (string) $dailyLog['sleep_time'];
+    $classification = validate_time_entry_classification(
+        $pdo,
+        $userId,
+        $activityId,
+        $activitySubtypeId,
+    );
 
     if (
         !is_entry_within_awake_window(
@@ -83,11 +91,29 @@ function add_past_time_entry(
     }
 
     $insert = $pdo->prepare(
-        'INSERT INTO time_entries (daily_log_id, start, end, state, notes)
-         VALUES (:daily_log_id, :start, :end, :state, :notes)',
+        'INSERT INTO time_entries (
+            daily_log_id,
+            activity_id,
+            activity_subtype_id,
+            start,
+            end,
+            state,
+            notes
+         )
+         VALUES (
+            :daily_log_id,
+            :activity_id,
+            :activity_subtype_id,
+            :start,
+            :end,
+            :state,
+            :notes
+         )',
     );
     $insert->execute([
         ':daily_log_id' => $dailyLog['id'],
+        ':activity_id' => $classification['activity_id'],
+        ':activity_subtype_id' => $classification['activity_subtype_id'],
         ':start' => $startTimestamp,
         ':end' => $endTimestamp,
         ':state' => 'completed',
@@ -118,6 +144,16 @@ function build_add_past_time_entry_response(
     $startTime = trim((string) ($payload['start'] ?? ''));
     $endTime = trim((string) ($payload['end'] ?? ''));
     $notes = (string) ($payload['notes'] ?? '');
+    $activityId = filter_var(
+        $payload['activity_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]],
+    );
+    $activitySubtypeId = filter_var(
+        $payload['activity_subtype_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]],
+    );
 
     if ($startTime === '') {
         return [
@@ -149,6 +185,8 @@ function build_add_past_time_entry_response(
             $startTime,
             $endTime,
             $notes,
+            $activityId === false ? null : $activityId,
+            $activitySubtypeId === false ? null : $activitySubtypeId,
         );
     } catch (\InvalidArgumentException $exception) {
         return [
