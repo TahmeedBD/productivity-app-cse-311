@@ -106,6 +106,54 @@ function list_today_time_entries(\PDO $pdo, string $userId, string $date): array
     return list_time_entries_for_daily_log($pdo, (int) $dailyLog['id']);
 }
 
+function list_time_entries_for_daily_log_in_order(
+    \PDO $pdo,
+    int $dailyLogId,
+): array {
+    $statement = $pdo->prepare(
+        'SELECT id, daily_log_id, activity_id, activity_subtype_id, start, end, state, notes
+         FROM time_entries
+         WHERE daily_log_id = :daily_log_id
+         ORDER BY start ASC, id ASC',
+    );
+    $statement->execute([':daily_log_id' => $dailyLogId]);
+
+    return $statement->fetchAll(\PDO::FETCH_ASSOC);
+}
+
+function find_time_entry_for_user(
+    \PDO $pdo,
+    int $entryId,
+    string $userId,
+): ?array {
+    $statement = $pdo->prepare(
+        'SELECT te.id,
+                te.daily_log_id,
+                te.activity_id,
+                te.activity_subtype_id,
+                te.start,
+                te.end,
+                te.state,
+                te.notes,
+                dl.user_id,
+                dl.date,
+                dl.wake_time,
+                dl.sleep_time
+         FROM time_entries te
+         INNER JOIN daily_logs dl ON dl.id = te.daily_log_id
+         WHERE te.id = :id AND dl.user_id = :user_id
+         LIMIT 1',
+    );
+    $statement->execute([
+        ':id' => $entryId,
+        ':user_id' => $userId,
+    ]);
+
+    $entry = $statement->fetch(\PDO::FETCH_ASSOC);
+
+    return $entry === false ? null : $entry;
+}
+
 function validate_time_entry_classification(
     \PDO $pdo,
     string $userId,
@@ -216,6 +264,61 @@ function find_running_time_entry_for_daily_log(
     }
 
     return $latestEntry;
+}
+
+function update_time_entry_record(
+    \PDO $pdo,
+    int $entryId,
+    ?int $activityId,
+    ?int $activitySubtypeId,
+    string $startTimestamp,
+    ?string $endTimestamp,
+    string $state,
+    string $notes,
+): void {
+    $statement = $pdo->prepare(
+        'UPDATE time_entries
+         SET activity_id = :activity_id,
+             activity_subtype_id = :activity_subtype_id,
+             start = :start,
+             end = :end,
+             state = :state,
+             notes = :notes
+         WHERE id = :id',
+    );
+    $statement->execute([
+        ':activity_id' => $activityId,
+        ':activity_subtype_id' => $activitySubtypeId,
+        ':start' => $startTimestamp,
+        ':end' => $endTimestamp,
+        ':state' => $state,
+        ':notes' => $notes,
+        ':id' => $entryId,
+    ]);
+}
+
+function update_time_entry_boundary(
+    \PDO $pdo,
+    int $entryId,
+    string $field,
+    string $timestamp,
+): void {
+    if ($field !== 'start' && $field !== 'end') {
+        throw new \InvalidArgumentException('Invalid entry boundary field.');
+    }
+
+    $statement = $pdo->prepare(
+        sprintf(
+            'UPDATE time_entries
+             SET %s = :timestamp
+             WHERE id = :id',
+            $field,
+        ),
+    );
+    $statement->execute([
+        ':timestamp' => $timestamp,
+        ':id' => $entryId,
+    ]);
 }
 
 function start_time_entry(
