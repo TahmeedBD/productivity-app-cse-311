@@ -6,7 +6,7 @@
  * Date range: exactly 30 calendar days ending on 5 May (inclusive).
  *
  * Constraints for the past 5 days:
- * - Awake window: 07:30 AM to 11:30 PM (except May 5, which ends at 4:00 PM).
+ * - Awake window: 07:30 AM to 11:30 PM.
  * - First 30 mins: Always 'routine' activity ("Morning plan + habits").
  * - Timing: All activities start/stop on :00, :30, or sometimes :15.
  * - Gaps: Very few (1 or 2 per day, ~30 min or ~2 hour).
@@ -41,7 +41,7 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit(1);
 }
 
-$host = getenv('DB_HOST') ?: '127.0.0.1';
+$host = getenv('DB_HOST') ?: 'db';
 $port = (int) (getenv('DB_PORT') ?: '3306');
 $dbName = getenv('DB_NAME') ?: 'productivity_app';
 $dbUser = getenv('DB_USER') ?: 'app_user';
@@ -290,6 +290,14 @@ function seed_date_range(
     DateTimeImmutable $endDate,
 ): void {
     $incomplete = build_habit_incomplete_map($email);
+    $currentLocal = new DateTimeImmutable(
+        'now',
+        new DateTimeZone('Asia/Dhaka'),
+    );
+    $currentLocalDate = $currentLocal->format('Y-m-d');
+    $currentLocalMinute =
+        ((int) $currentLocal->format('H')) * 60 +
+        (int) $currentLocal->format('i');
 
     $logStmt = $pdo->prepare(
         'INSERT INTO daily_logs (user_id, date, wake_time, sleep_time) VALUES (:uid, :d, :w, :s)',
@@ -306,11 +314,12 @@ function seed_date_range(
         $dateStr = $day->format('Y-m-d');
         $isToday = $i === 0;
         $isRecent = $i < 14;
+        $isActualCurrentDate = $dateStr === $currentLocalDate;
 
         // Awake time
         if ($isRecent) {
             $wakeMin = 7 * 60 + 30; // 07:30 AM
-            $dayEndMin = $isToday ? 16 * 60 : 23 * 60 + 30; // 11:30 PM
+            $dayEndMin = 23 * 60 + 30; // 11:30 PM
         } else {
             $wakeMin = 420 + (($i * 7) % 75);
             $dayEndMin = 1320 + (($i * 11) % 105);
@@ -330,11 +339,23 @@ function seed_date_range(
         ]);
         $dailyLogId = (int) $pdo->lastInsertId();
 
+        $entrySeedEndMin = $dayEndMin;
+
+        if ($isActualCurrentDate) {
+            $entrySeedEndMin = max(
+                $wakeMin + 30,
+                min(
+                    $dayEndMin,
+                    round_down_to_quarter_hour($currentLocalMinute),
+                ),
+            );
+        }
+
         if ($isRecent) {
             $slots = build_recent_day_slots(
                 $dateStr,
                 $wakeMin,
-                $dayEndMin,
+                $entrySeedEndMin,
                 $i,
                 $activityIds,
                 $subtypeIds,
@@ -343,7 +364,7 @@ function seed_date_range(
             $slots = build_old_day_slots(
                 $dateStr,
                 $wakeMin,
-                $dayEndMin,
+                $entrySeedEndMin,
                 $i,
                 $activityIds,
                 $subtypeIds,
@@ -478,11 +499,6 @@ function build_recent_day_slots(
             }
         }
 
-        // Final clamp for today (May 5) to ensure it doesn't exceed 4pm
-        if ($dayIndex === 0 && $blockEnd > 16 * 60) {
-            $blockEnd = 16 * 60;
-        }
-
         // Final safety check: ensure block stays within wake cycle
         if ($blockEnd > $dayEndMin) {
             $blockEnd = $dayEndMin;
@@ -576,6 +592,11 @@ function deterministic_pick_days(int $total, int $count, string $salt): array
     $keys = array_keys($picked);
     sort($keys);
     return $keys;
+}
+
+function round_down_to_quarter_hour(int $minutes): int
+{
+    return intdiv($minutes, 15) * 15;
 }
 
 function minutes_to_time(int $m): string

@@ -12,6 +12,7 @@ services:
       DEV_AUTO_LOGIN_USERNAME: 'Dev User'
     volumes:
       - ./public:/var/www/html
+      - ./scripts:/var/www/scripts
       - ./src:/var/www/src
       - ./tests:/var/www/tests
       - ./vendor:/var/www/vendor
