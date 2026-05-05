@@ -762,6 +762,7 @@ const REPORT_ACTIVITY_COLORS = [
 let reportSelectedDate = getRequestedReportDate();
 let reportActivitiesLoaded = false;
 let reportEditingEntryId = null;
+let reportEditingEntryIsRunning = false;
 let currentReportEntries = [];
 let currentReportSegments = [];
 let reportsTimelineSortOrder = 'desc';
@@ -1206,6 +1207,7 @@ function openReportsEntryModal(prefill) {
         reportEditingEntryId === null ? 'Add Entry' : 'Edit Entry';
     setButtonText('#reports-entry-submit', reportEditingEntryId === null ? 'Save Entry' : 'Save Changes');
     deleteButton.hidden = reportEditingEntryId === null;
+    endField.required = !reportEditingEntryIsRunning;
     startField.value = (_a = prefill === null || prefill === void 0 ? void 0 : prefill.start) !== null && _a !== void 0 ? _a : '';
     endField.value = (_b = prefill === null || prefill === void 0 ? void 0 : prefill.end) !== null && _b !== void 0 ? _b : '';
     notesField.value = (_c = prefill === null || prefill === void 0 ? void 0 : prefill.notes) !== null && _c !== void 0 ? _c : '';
@@ -1329,6 +1331,7 @@ function bindReportsPage() {
     addButton === null || addButton === void 0 ? void 0 : addButton.addEventListener('click', () => __awaiter(this, void 0, void 0, function* () {
         try {
             reportEditingEntryId = null;
+            reportEditingEntryIsRunning = false;
             yield ensureReportActivityOptions();
             setSelectValue(activityField, null);
             yield loadSubtypeOptionsForSelect(subtypeField, null, null, 'Choose subtype (optional)', 'No subtypes yet', 'Select an activity first');
@@ -1368,6 +1371,8 @@ function bindReportsPage() {
             }
             try {
                 reportEditingEntryId = entryId;
+                reportEditingEntryIsRunning =
+                    entry.state === 'running' || entry.end === null;
                 yield ensureReportActivityOptions();
                 setSelectValue(activityField, toNullableId(entry.activity_id));
                 yield loadSubtypeOptionsForSelect(subtypeField, toNullableId(entry.activity_id), toNullableId(entry.activity_subtype_id), 'Choose subtype (optional)', 'No subtypes yet', 'Select an activity first');
@@ -1389,6 +1394,7 @@ function bindReportsPage() {
         }
         try {
             reportEditingEntryId = null;
+            reportEditingEntryIsRunning = false;
             yield ensureReportActivityOptions();
             setSelectValue(activityField, null);
             yield loadSubtypeOptionsForSelect(subtypeField, null, null, 'Choose subtype (optional)', 'No subtypes yet', 'Select an activity first');
@@ -1422,6 +1428,7 @@ function bindReportsPage() {
             });
             closeReportsEntryModal();
             reportEditingEntryId = null;
+            reportEditingEntryIsRunning = false;
             yield refreshReportsPage();
         }
         catch (error) {
@@ -1440,12 +1447,15 @@ function bindReportsPage() {
         const subtypeId = parseSelectedId(subtypeField);
         const start = normalizeTimeForApi((_a = startField === null || startField === void 0 ? void 0 : startField.value) !== null && _a !== void 0 ? _a : '');
         const end = normalizeTimeForApi((_b = endField === null || endField === void 0 ? void 0 : endField.value) !== null && _b !== void 0 ? _b : '');
+        const requiresEndTime = !reportEditingEntryIsRunning;
         if (!activityId) {
             showInlineError('#reports-entry-error', 'Activity is required.');
             return;
         }
-        if (!start || !end) {
-            showInlineError('#reports-entry-error', 'Start and end times are required.');
+        if (!start || (requiresEndTime && !end)) {
+            showInlineError('#reports-entry-error', requiresEndTime
+                ? 'Start and end times are required.'
+                : 'Start time is required.');
             return;
         }
         clearInlineError('#reports-entry-error');
@@ -1460,11 +1470,11 @@ function bindReportsPage() {
                 },
                 body: JSON.stringify(Object.assign(Object.assign({}, (reportEditingEntryId === null
                     ? {}
-                    : { id: reportEditingEntryId })), { date: reportSelectedDate, start,
-                    end, notes: (_c = notesField === null || notesField === void 0 ? void 0 : notesField.value) !== null && _c !== void 0 ? _c : '', activity_id: activityId, activity_subtype_id: subtypeId })),
+                    : { id: reportEditingEntryId })), { date: reportSelectedDate, start, end: end || null, notes: (_c = notesField === null || notesField === void 0 ? void 0 : notesField.value) !== null && _c !== void 0 ? _c : '', activity_id: activityId, activity_subtype_id: subtypeId })),
             });
             closeReportsEntryModal();
             reportEditingEntryId = null;
+            reportEditingEntryIsRunning = false;
             yield refreshReportsPage();
         }
         catch (error) {

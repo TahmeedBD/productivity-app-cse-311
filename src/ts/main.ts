@@ -1216,6 +1216,7 @@ const REPORT_ACTIVITY_COLORS = [
 let reportSelectedDate = getRequestedReportDate();
 let reportActivitiesLoaded = false;
 let reportEditingEntryId: number | null = null;
+let reportEditingEntryIsRunning = false;
 let currentReportEntries: TimeEntry[] = [];
 let currentReportSegments: TimelineSegment[] = [];
 let reportsTimelineSortOrder: 'desc' | 'asc' = 'desc';
@@ -1860,6 +1861,7 @@ function openReportsEntryModal(prefill?: Partial<ReportFormState>): void {
     reportEditingEntryId === null ? 'Save Entry' : 'Save Changes',
   );
   deleteButton.hidden = reportEditingEntryId === null;
+  endField.required = !reportEditingEntryIsRunning;
   startField.value = prefill?.start ?? '';
   endField.value = prefill?.end ?? '';
   notesField.value = prefill?.notes ?? '';
@@ -2069,6 +2071,7 @@ function bindReportsPage(): void {
   addButton?.addEventListener('click', async () => {
     try {
       reportEditingEntryId = null;
+      reportEditingEntryIsRunning = false;
       await ensureReportActivityOptions();
       setSelectValue(activityField, null);
       await loadSubtypeOptionsForSelect(
@@ -2136,6 +2139,8 @@ function bindReportsPage(): void {
 
         try {
           reportEditingEntryId = entryId;
+          reportEditingEntryIsRunning =
+            entry.state === 'running' || entry.end === null;
           await ensureReportActivityOptions();
           setSelectValue(activityField, toNullableId(entry.activity_id));
           await loadSubtypeOptionsForSelect(
@@ -2168,6 +2173,7 @@ function bindReportsPage(): void {
 
       try {
         reportEditingEntryId = null;
+        reportEditingEntryIsRunning = false;
         await ensureReportActivityOptions();
         setSelectValue(activityField, null);
         await loadSubtypeOptionsForSelect(
@@ -2214,6 +2220,7 @@ function bindReportsPage(): void {
 
       closeReportsEntryModal();
       reportEditingEntryId = null;
+      reportEditingEntryIsRunning = false;
       await refreshReportsPage();
     } catch (error: unknown) {
       showInlineError(
@@ -2234,16 +2241,19 @@ function bindReportsPage(): void {
     const subtypeId = parseSelectedId(subtypeField);
     const start = normalizeTimeForApi(startField?.value ?? '');
     const end = normalizeTimeForApi(endField?.value ?? '');
+    const requiresEndTime = !reportEditingEntryIsRunning;
 
     if (!activityId) {
       showInlineError('#reports-entry-error', 'Activity is required.');
       return;
     }
 
-    if (!start || !end) {
+    if (!start || (requiresEndTime && !end)) {
       showInlineError(
         '#reports-entry-error',
-        'Start and end times are required.',
+        requiresEndTime
+          ? 'Start and end times are required.'
+          : 'Start time is required.',
       );
       return;
     }
@@ -2267,7 +2277,7 @@ function bindReportsPage(): void {
               : { id: reportEditingEntryId }),
             date: reportSelectedDate,
             start,
-            end,
+            end: end || null,
             notes: notesField?.value ?? '',
             activity_id: activityId,
             activity_subtype_id: subtypeId,
@@ -2277,6 +2287,7 @@ function bindReportsPage(): void {
 
       closeReportsEntryModal();
       reportEditingEntryId = null;
+      reportEditingEntryIsRunning = false;
       await refreshReportsPage();
     } catch (error: unknown) {
       showInlineError(
