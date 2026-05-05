@@ -1,61 +1,134 @@
 <?php
-ob_start();
-session_start();
-
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
-
-require_once __DIR__ . '/../src/db.php';
+require_once __DIR__ . '/../src/auth/guard.php';
 require_once __DIR__ . '/../src/activities/service.php';
 require_once __DIR__ . '/../src/activity_subtypes/service.php';
 
-$userId = $_SESSION['user_id']; 
-$error_message = "";
+$userId = (string) ($currentUser['id'] ?? '');
+$error_message = '';
 
 // --- Auto Emoji Detection ---
-function getDetectedEmoji($name) {
+function getDetectedEmoji($name)
+{
     $name = strtolower(trim($name));
     $map = [
-        'code' => '💻', 'dev' => '💻', 'program' => '👨‍💻',
-        'exercise' => '🏋️', 'gym' => '💪', 'workout' => '🏃',
-        'read' => '📖', 'book' => '📚', 'study' => '🎓',
-        'eat' => '🍔', 'food' => '🍕', 'lunch' => '🍱',
-        'meeting' => '💼', 'work' => '👔', 'sleep' => '😴',
-        'game' => '🎮', 'music' => '🎵', 'movie' => '🎬',
-        'content' => '🎨', 'design' => '🖌️'
+        'code' => '💻',
+        'dev' => '💻',
+        'program' => '👨‍💻',
+        'exercise' => '🏋️',
+        'gym' => '💪',
+        'workout' => '🏃',
+        'read' => '📖',
+        'book' => '📚',
+        'study' => '🎓',
+        'eat' => '🍔',
+        'food' => '🍕',
+        'lunch' => '🍱',
+        'meeting' => '💼',
+        'work' => '👔',
+        'sleep' => '😴',
+        'game' => '🎮',
+        'music' => '🎵',
+        'movie' => '🎬',
+        'content' => '🎨',
+        'design' => '🖌️',
     ];
     foreach ($map as $key => $emoji) {
-        if (str_contains($name, $key)) return $emoji;
+        if (str_contains($name, $key)) {
+            return $emoji;
+        }
     }
     return '📁';
 }
 
-function getDotColor($index) {
-    $colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c', '#9b59b6', '#1abc9c'];
+function getDotColor($index)
+{
+    $colors = [
+        '#2ecc71',
+        '#3498db',
+        '#f39c12',
+        '#e74c3c',
+        '#9b59b6',
+        '#1abc9c',
+    ];
     return $colors[$index % count($colors)];
+}
+
+function list_activity_subtype_counts(\PDO $pdo, array $activities): array
+{
+    if ($activities === []) {
+        return [];
+    }
+
+    $activityIds = array_map(
+        static fn(array $activity): int => (int) $activity['id'],
+        $activities,
+    );
+    $placeholders = implode(', ', array_fill(0, count($activityIds), '?'));
+    $statement = $pdo->prepare(
+        "SELECT activity_id, COUNT(*) AS subtype_count
+         FROM activity_subtypes
+         WHERE activity_id IN ($placeholders)
+         GROUP BY activity_id",
+    );
+    $statement->execute($activityIds);
+
+    $counts = array_fill_keys($activityIds, 0);
+
+    foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $counts[(int) $row['activity_id']] = (int) $row['subtype_count'];
+    }
+
+    return $counts;
 }
 
 // --- Action Handlers ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $action = $_POST['action'] ?? '';
-        
+        $redirectActivityId = !empty($_POST['activity_id'])
+            ? (int) $_POST['activity_id']
+            : null;
+
         if ($action === 'add_activity') {
-            create_activity($pdo, $userId, $_POST['name']);
+            $createdActivity = create_activity(
+                $pdo,
+                $userId,
+                (string) ($_POST['name'] ?? ''),
+            );
+            $redirectActivityId = (int) $createdActivity['id'];
         } elseif ($action === 'rename_activity') {
-            update_activity($pdo, (int)$_POST['id'], $userId, $_POST['new_name']);
+            $updatedActivity = update_activity(
+                $pdo,
+                (int) ($_POST['id'] ?? 0),
+                $userId,
+                (string) ($_POST['new_name'] ?? ''),
+            );
+            $redirectActivityId = (int) $updatedActivity['id'];
         } elseif ($action === 'delete_activity') {
-            delete_activity($pdo, (int)$_POST['id'], $userId);
+            delete_activity($pdo, (int) ($_POST['id'] ?? 0), $userId);
         } elseif ($action === 'add_subtype') {
-            create_activity_subtype($pdo, (int)$_POST['activity_id'], $userId, $_POST['name']);
+            create_activity_subtype(
+                $pdo,
+                (int) ($_POST['activity_id'] ?? 0),
+                $userId,
+                (string) ($_POST['name'] ?? ''),
+            );
         } elseif ($action === 'delete_subtype') {
-            delete_activity_subtype($pdo, (int)$_POST['id'], (int)$_POST['activity_id'], $userId);
+            delete_activity_subtype(
+                $pdo,
+                (int) ($_POST['id'] ?? 0),
+                (int) ($_POST['activity_id'] ?? 0),
+                $userId,
+            );
         }
-        
-        $target = "activities.php" . (!empty($_POST['activity_id']) ? "?id=" . $_POST['activity_id'] : "");
-        header("Location: " . $target);
+
+        $target = 'activities.php';
+
+        if ($redirectActivityId !== null && $redirectActivityId > 0) {
+            $target .= '?id=' . $redirectActivityId;
+        }
+
+        header('Location: ' . $target);
         exit();
     } catch (Exception $e) {
         $error_message = $e->getMessage();
@@ -65,15 +138,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $pageTitle = 'Activities';
 require_once 'header.php';
 
-$activities = list_activities($pdo, $userId); 
-$selectedId = isset($_GET['id']) ? (int)$_GET['id'] : ($activities[0]['id'] ?? null);
+$activities = list_activities($pdo, $userId);
+$activitySubtypeCounts = list_activity_subtype_counts($pdo, $activities);
+$selectedId = isset($_GET['id'])
+    ? (int) $_GET['id']
+    : $activities[0]['id'] ?? null;
 
 $subtypes = [];
-$selectedName = "";
+$selectedName = '';
 if ($selectedId) {
-    $subtypes = list_activity_subtypes($pdo, (int)$selectedId, $userId);
+    $subtypes = list_activity_subtypes($pdo, (int) $selectedId, $userId);
     foreach ($activities as $a) {
-        if ($a['id'] == $selectedId) $selectedName = $a['name'];
+        if ($a['id'] == $selectedId) {
+            $selectedName = $a['name'];
+        }
     }
 }
 ?>
@@ -130,7 +208,7 @@ if ($selectedId) {
         <button class="btn-new-act" onclick="openM('actM')">+ New Activity</button>
     </div>
 
-    <?php if($error_message): ?>
+    <?php if ($error_message): ?>
         <div style="background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #ff9f93; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
             ⚠️ <?= htmlspecialchars($error_message) ?>
         </div>
@@ -142,20 +220,37 @@ if ($selectedId) {
             <span style="color: #ffbd8a; font-weight: bold; margin-bottom: 20px; display: block;">Categories</span>
             <?php foreach ($activities as $act): ?>
                 <div class="cat-card-wrapper">
-                    <a href="?id=<?= $act['id'] ?>" class="cat-card <?= $selectedId == $act['id'] ? 'active' : '' ?>">
-                        <div class="cat-icon"><?= getDetectedEmoji($act['name']) ?></div>
+                    <a href="?id=<?= $act[
+                        'id'
+                    ] ?>" class="cat-card <?= $selectedId == $act['id']
+    ? 'active'
+    : '' ?>">
+                        <div class="cat-icon"><?= getDetectedEmoji(
+                            $act['name'],
+                        ) ?></div>
                         <div class="cat-info">
-                            <h4 style="margin:0"><?= htmlspecialchars($act['name']) ?></h4>
-                            <span style="font-size: 13px; color: #666;"><?= count(list_activity_subtypes($pdo, $act['id'], $userId)) ?> Subtypes</span>
+                            <h4 style="margin:0"><?= htmlspecialchars(
+                                $act['name'],
+                            ) ?></h4>
+                            <span style="font-size: 13px; color: #666;"><?= (int) ($activitySubtypeCounts[
+                                (int) $act['id']
+                            ] ?? 0) ?> Subtypes</span>
                         </div>
                     </a>
                     <!-- Modern Edit & Delete Buttons (SVGs) -->
                     <div class="cat-actions">
-                        <button type="button" class="action-btn" onclick="openRenameModal(<?= $act['id'] ?>, '<?= htmlspecialchars($act['name'], ENT_QUOTES) ?>')">
+                        <button type="button" class="action-btn" onclick="openRenameModal(<?= $act[
+                            'id'
+                        ] ?>, '<?= htmlspecialchars(
+    $act['name'],
+    ENT_QUOTES,
+) ?>')">
                             <!-- Pencil SVG -->
                             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                         </button>
-                        <button type="button" class="action-btn delete-btn" onclick="openDeleteModal('activity', <?= $act['id'] ?>)">
+                        <button type="button" class="action-btn delete-btn" onclick="openDeleteModal('activity', <?= $act[
+                            'id'
+                        ] ?>)">
                             <!-- Trash SVG -->
                             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
@@ -168,19 +263,29 @@ if ($selectedId) {
         <div class="subtype-container">
             <?php if ($selectedId): ?>
                 <div class="subtype-header">
-                    <h2><?= getDetectedEmoji($selectedName) ?> <?= htmlspecialchars($selectedName) ?> Subtypes</h2>
+                    <h2><?= getDetectedEmoji(
+                        $selectedName,
+                    ) ?> <?= htmlspecialchars($selectedName) ?> Subtypes</h2>
                     <button style="background:transparent; border:1px solid #2ecc71; color:#2ecc71; padding:6px 15px; border-radius:6px; cursor:pointer;" onclick="openM('subM')">+ Add Subtype</button>
                 </div>
-                <p class="subtype-desc">Manage sub-categories for <?= htmlspecialchars($selectedName) ?> tasks.</p>
+                <p class="subtype-desc">Manage sub-categories for <?= htmlspecialchars(
+                    $selectedName,
+                ) ?> tasks.</p>
                 
                 <div class="subtype-list">
                     <?php foreach ($subtypes as $index => $st): ?>
                         <div class="st-row">
                             <div style="display:flex; align-items:center;">
-                                <div class="st-dot" style="background: <?= getDotColor($index) ?>;"></div>
-                                <span><?= htmlspecialchars($st['name']) ?></span>
+                                <div class="st-dot" style="background: <?= getDotColor(
+                                    $index,
+                                ) ?>;"></div>
+                                <span><?= htmlspecialchars(
+                                    $st['name'],
+                                ) ?></span>
                             </div>
-                            <button type="button" class="action-btn delete-btn" onclick="openDeleteModal('subtype', <?= $st['id'] ?>, <?= $selectedId ?>)">
+                            <button type="button" class="action-btn delete-btn" onclick="openDeleteModal('subtype', <?= $st[
+                                'id'
+                            ] ?>, <?= $selectedId ?>)">
                                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                         </div>
@@ -282,7 +387,5 @@ if ($selectedId) {
     }
 </script>
 
-<?php 
-require_once 'footer.php'; 
-ob_end_flush(); 
+<?php require_once 'footer.php';
 ?>
