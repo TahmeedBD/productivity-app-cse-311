@@ -3,7 +3,7 @@
  * Public route: POST /auth/login.php
  *
  * Request body (application/json):
- *   { "email": "...", "password": "..." }
+ *   { "identifier": "...", "password": "..." }
  *
  * Success 200 (sets PHPSESSID cookie, session contains user_id):
  *   { "ok": true, "user": { "id": "...", "email": "...", "username": "..." } }
@@ -19,21 +19,30 @@ start_session();
 require_method('POST');
 
 $body = get_json_body();
-$email = trim($body['email'] ?? '');
+$identifier = trim((string) ($body['identifier'] ?? ($body['email'] ?? '')));
 $password = $body['password'] ?? '';
 
-if ($email === '' || $password === '') {
+if ($identifier === '' || $password === '') {
     json_response(
-        ['ok' => false, 'error' => 'Email and password are required.'],
+        [
+            'ok' => false,
+            'error' => 'Username or email and password are required.',
+        ],
         400,
     );
 }
 
-// Fetch the user by email.
+// Fetch the user by email or username.
 $stmt = $pdo->prepare(
-    'SELECT id, email, username, password_hash FROM users WHERE email = :email',
+    'SELECT id, email, username, password_hash
+     FROM users
+     WHERE email = :email_identifier OR username = :username_identifier
+     LIMIT 1',
 );
-$stmt->execute([':email' => $email]);
+$stmt->execute([
+    ':email_identifier' => $identifier,
+    ':username_identifier' => $identifier,
+]);
 $user = $stmt->fetch();
 
 // Always run password_verify to prevent timing-based user enumeration.
@@ -43,7 +52,7 @@ $dummyHash = '$2y$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
 $hash = $user ? $user['password_hash'] : $dummyHash;
 
 if (!$user || !password_verify($password, $hash)) {
-    // Same error for bad email AND bad password — prevents enumeration.
+    // Same error for bad identifier AND bad password — prevents enumeration.
     json_response(['ok' => false, 'error' => 'Invalid credentials.'], 401);
 }
 
