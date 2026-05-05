@@ -1,55 +1,54 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../src/auth/guard.php';
 require_once __DIR__ . '/../src/activities/service.php';
 require_once __DIR__ . '/../src/activity_subtypes/service.php';
 
 $userId = (string) ($currentUser['id'] ?? '');
-$error_message = '';
+$errorMessage = '';
 
-// --- Auto Emoji Detection ---
-function getDetectedEmoji($name)
+function activity_monogram(string $name): string
 {
-    $name = strtolower(trim($name));
-    $map = [
-        'code' => '💻',
-        'dev' => '💻',
-        'program' => '👨‍💻',
-        'exercise' => '🏋️',
-        'gym' => '💪',
-        'workout' => '🏃',
-        'read' => '📖',
-        'book' => '📚',
-        'study' => '🎓',
-        'eat' => '🍔',
-        'food' => '🍕',
-        'lunch' => '🍱',
-        'meeting' => '💼',
-        'work' => '👔',
-        'sleep' => '😴',
-        'game' => '🎮',
-        'music' => '🎵',
-        'movie' => '🎬',
-        'content' => '🎨',
-        'design' => '🖌️',
-    ];
-    foreach ($map as $key => $emoji) {
-        if (str_contains($name, $key)) {
-            return $emoji;
+    $normalizedName = trim($name);
+
+    if ($normalizedName === '') {
+        return 'A';
+    }
+
+    $parts = preg_split('/\s+/', $normalizedName) ?: [];
+    $letters = '';
+
+    foreach ($parts as $part) {
+        $character = mb_substr($part, 0, 1);
+
+        if ($character !== '') {
+            $letters .= mb_strtoupper($character);
+        }
+
+        if (mb_strlen($letters) >= 2) {
+            break;
         }
     }
-    return '📁';
+
+    if ($letters !== '') {
+        return mb_substr($letters, 0, 2);
+    }
+
+    return mb_strtoupper(mb_substr($normalizedName, 0, 1));
 }
 
-function getDotColor($index)
+function subtype_dot_color(int $index): string
 {
     $colors = [
-        '#2ecc71',
-        '#3498db',
-        '#f39c12',
-        '#e74c3c',
-        '#9b59b6',
-        '#1abc9c',
+        'var(--color-tag-01)',
+        'var(--color-tag-03)',
+        'var(--color-tag-05)',
+        'var(--color-tag-07)',
+        'var(--color-tag-11)',
+        'var(--color-tag-13)',
     ];
+
     return $colors[$index % count($colors)];
 }
 
@@ -81,10 +80,9 @@ function list_activity_subtype_counts(\PDO $pdo, array $activities): array
     return $counts;
 }
 
-// --- Action Handlers ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $action = $_POST['action'] ?? '';
+        $action = (string) ($_POST['action'] ?? '');
         $redirectActivityId = !empty($_POST['activity_id'])
             ? (int) $_POST['activity_id']
             : null;
@@ -130,262 +128,399 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         header('Location: ' . $target);
         exit();
-    } catch (Exception $e) {
-        $error_message = $e->getMessage();
+    } catch (Throwable $throwable) {
+        $errorMessage = $throwable->getMessage();
     }
 }
-
-$pageTitle = 'Activities';
-require_once 'header.php';
 
 $activities = list_activities($pdo, $userId);
 $activitySubtypeCounts = list_activity_subtype_counts($pdo, $activities);
 $selectedId = isset($_GET['id'])
     ? (int) $_GET['id']
-    : $activities[0]['id'] ?? null;
+    : (int) ($activities[0]['id'] ?? 0);
+$selectedActivity = null;
 
-$subtypes = [];
-$selectedName = '';
-if ($selectedId) {
-    $subtypes = list_activity_subtypes($pdo, (int) $selectedId, $userId);
-    foreach ($activities as $a) {
-        if ($a['id'] == $selectedId) {
-            $selectedName = $a['name'];
-        }
+foreach ($activities as $activity) {
+    if ((int) $activity['id'] === $selectedId) {
+        $selectedActivity = $activity;
+        break;
     }
 }
+
+if ($selectedActivity === null && $activities !== []) {
+    $selectedActivity = $activities[0];
+    $selectedId = (int) $selectedActivity['id'];
+}
+
+$subtypes =
+    $selectedActivity === null
+        ? []
+        : list_activity_subtypes($pdo, (int) $selectedActivity['id'], $userId);
+
+$pageTitle = 'Activities';
+$pageCSS = 'activities.css';
+require_once 'header.php';
 ?>
 
-<style>
-    .activities-page { padding: 40px 0; color: #fff; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-    .btn-new-act { background: #ffbd8a; color: #2c1a10; border: none; padding: 10px 22px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    
-    .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 40px; }
-    
-    /* Categories Column */
-    .cat-card-wrapper { position: relative; margin-bottom: 15px; }
-    .cat-card { 
-        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); 
-        padding: 20px; padding-right: 80px; /* Action buttons er jonno jayga */
-        border-radius: 12px; display: flex; align-items: center; gap: 15px; 
-        text-decoration: none; color: white; transition: 0.3s;
-    }
-    .cat-card.active { border-color: #ffbd8a; background: rgba(255,189,138,0.05); }
-    .cat-icon { background: #3d2b1f; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 22px; color: #ffbd8a; }
-    
-    /* Visible Actions (Using Raw SVGs) */
-    .cat-actions { 
-        position: absolute; right: 15px; top: 50%; transform: translateY(-50%); 
-        display: flex; gap: 10px; z-index: 10;
-    }
-    .action-btn { 
-        background: none; border: none; color: #888; /* 100% Visible Grey */
-        cursor: pointer; padding: 5px; transition: 0.2s; display: flex; align-items: center; justify-content: center;
-    }
-    .action-btn:hover { color: #ffbd8a; }
-    .action-btn.delete-btn:hover { color: #e74c3c; }
-
-    /* Subtypes Panel */
-    .subtype-container { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 40px; min-height: 500px; }
-    .subtype-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .subtype-header h2 { margin: 0; font-size: 24px; color: #ffbd8a; }
-    .subtype-desc { color: #888; font-size: 14px; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 20px; }
-    
-    .st-row { background: rgba(255,255,255,0.03); padding: 18px 25px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .st-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 15px; }
-
-    /* Modals */
-    .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
-    .modal-content { background: #1a1a1a; padding: 30px; border: 1px solid #333; width: 380px; border-radius: 15px; position: relative; margin: 10% auto; }
-    .modal input { width: 100%; padding: 12px; margin: 15px 0; background: #000; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
-    .btn-danger { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
-</style>
-
 <div class="activities-page">
-    <div class="page-header">
-        <h1 style="margin:0">Activities</h1>
-        <button class="btn-new-act" onclick="openM('actM')">+ New Activity</button>
-    </div>
-
-    <?php if ($error_message): ?>
-        <div style="background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #ff9f93; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-            ⚠️ <?= htmlspecialchars($error_message) ?>
+    <section class="card card-featured activities-toolbar">
+        <div class="activities-toolbar__copy">
+            <h1 class="text-h1">Activities</h1>
+            <p class="text-muted">Organize top-level categories and the subtypes you actually log against during the day.</p>
         </div>
+        <button type="button" class="btn btn-primary" data-open-modal="activity-create-modal">New Activity</button>
+    </section>
+
+    <?php if ($errorMessage !== ''): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars(
+            $errorMessage,
+        ) ?></div>
     <?php endif; ?>
 
-    <div class="main-grid">
-        <!-- Categories List -->
-        <div>
-            <span style="color: #ffbd8a; font-weight: bold; margin-bottom: 20px; display: block;">Categories</span>
-            <?php foreach ($activities as $act): ?>
-                <div class="cat-card-wrapper">
-                    <a href="?id=<?= $act[
-                        'id'
-                    ] ?>" class="cat-card <?= $selectedId == $act['id']
-    ? 'active'
-    : '' ?>">
-                        <div class="cat-icon"><?= getDetectedEmoji(
-                            $act['name'],
-                        ) ?></div>
-                        <div class="cat-info">
-                            <h4 style="margin:0"><?= htmlspecialchars(
-                                $act['name'],
-                            ) ?></h4>
-                            <span style="font-size: 13px; color: #666;"><?= (int) ($activitySubtypeCounts[
-                                (int) $act['id']
-                            ] ?? 0) ?> Subtypes</span>
-                        </div>
-                    </a>
-                    <!-- Modern Edit & Delete Buttons (SVGs) -->
-                    <div class="cat-actions">
-                        <button type="button" class="action-btn" onclick="openRenameModal(<?= $act[
-                            'id'
-                        ] ?>, '<?= htmlspecialchars(
-    $act['name'],
-    ENT_QUOTES,
-) ?>')">
-                            <!-- Pencil SVG -->
-                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                        </button>
-                        <button type="button" class="action-btn delete-btn" onclick="openDeleteModal('activity', <?= $act[
-                            'id'
-                        ] ?>)">
-                            <!-- Trash SVG -->
-                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        </button>
+    <div class="activities-layout">
+        <section class="card activities-panel">
+            <div class="activities-panel__header">
+                <div>
+                    <h2 class="text-h3">Categories</h2>
+                    <p class="text-muted">Select a category to manage its subtypes.</p>
+                </div>
+            </div>
+
+            <?php if ($activities === []): ?>
+                <div class="activities-empty">
+                    <div class="activities-empty__content">
+                        <h3 class="text-h3">No activities yet</h3>
+                        <p class="text-muted">Create your first activity to start grouping work and adding subtypes.</p>
+                        <button type="button" class="btn btn-primary" data-open-modal="activity-create-modal">Create First Activity</button>
                     </div>
                 </div>
-            <?php endforeach; ?>
-        </div>
-
-        <!-- Subtypes Panel -->
-        <div class="subtype-container">
-            <?php if ($selectedId): ?>
-                <div class="subtype-header">
-                    <h2><?= getDetectedEmoji(
-                        $selectedName,
-                    ) ?> <?= htmlspecialchars($selectedName) ?> Subtypes</h2>
-                    <button style="background:transparent; border:1px solid #2ecc71; color:#2ecc71; padding:6px 15px; border-radius:6px; cursor:pointer;" onclick="openM('subM')">+ Add Subtype</button>
-                </div>
-                <p class="subtype-desc">Manage sub-categories for <?= htmlspecialchars(
-                    $selectedName,
-                ) ?> tasks.</p>
-                
-                <div class="subtype-list">
-                    <?php foreach ($subtypes as $index => $st): ?>
-                        <div class="st-row">
-                            <div style="display:flex; align-items:center;">
-                                <div class="st-dot" style="background: <?= getDotColor(
-                                    $index,
-                                ) ?>;"></div>
-                                <span><?= htmlspecialchars(
-                                    $st['name'],
+            <?php else: ?>
+                <div class="activities-list">
+                    <?php foreach ($activities as $activity): ?>
+                        <?php $activityId = (int) $activity['id']; ?>
+                        <article class="activities-item <?= $activityId ===
+                        $selectedId
+                            ? 'activities-item--active'
+                            : '' ?>">
+                            <a href="?id=<?= $activityId ?>" class="activities-item__link">
+                                <span class="activities-item__icon"><?= htmlspecialchars(
+                                    activity_monogram(
+                                        (string) $activity['name'],
+                                    ),
                                 ) ?></span>
+                                <span class="activities-item__body">
+                                    <span class="activities-item__name"><?= htmlspecialchars(
+                                        (string) $activity['name'],
+                                    ) ?></span>
+                                    <span class="activities-item__meta"><?= (int) ($activitySubtypeCounts[
+                                        $activityId
+                                    ] ??
+                                        0) ?> <?= (int) ($activitySubtypeCounts[
+     $activityId
+ ] ?? 0) === 1
+     ? 'subtype'
+     : 'subtypes' ?></span>
+                                </span>
+                            </a>
+                            <div class="activities-item__actions">
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-sm activities-icon-button"
+                                    data-rename-activity
+                                    data-activity-id="<?= $activityId ?>"
+                                    data-activity-name="<?= htmlspecialchars(
+                                        (string) $activity['name'],
+                                        ENT_QUOTES,
+                                    ) ?>"
+                                    aria-label="Rename <?= htmlspecialchars(
+                                        (string) $activity['name'],
+                                    ) ?>"
+                                    title="Rename activity"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-sm activities-icon-button"
+                                    data-delete-activity
+                                    data-activity-id="<?= $activityId ?>"
+                                    data-activity-name="<?= htmlspecialchars(
+                                        (string) $activity['name'],
+                                        ENT_QUOTES,
+                                    ) ?>"
+                                    aria-label="Delete <?= htmlspecialchars(
+                                        (string) $activity['name'],
+                                    ) ?>"
+                                    title="Delete activity"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                                </button>
                             </div>
-                            <button type="button" class="action-btn delete-btn" onclick="openDeleteModal('subtype', <?= $st[
-                                'id'
-                            ] ?>, <?= $selectedId ?>)">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
+                        </article>
                     <?php endforeach; ?>
                 </div>
-            <?php else: ?>
-                <div style="text-align: center; color: #444; margin-top: 150px;">Select a category to manage subtypes.</div>
             <?php endif; ?>
+        </section>
+
+        <section class="card activities-panel">
+            <?php if ($selectedActivity === null): ?>
+                <div class="activities-empty">
+                    <div class="activities-empty__content">
+                        <h2 class="text-h3">Select a category</h2>
+                        <p class="text-muted">Choose an activity on the left to view and manage its subtypes.</p>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="activities-panel__header">
+                    <div>
+                        <h2 class="text-h3"><?= htmlspecialchars(
+                            (string) $selectedActivity['name'],
+                        ) ?></h2>
+                        <p class="text-muted">Manage the sub-categories you use for <?= htmlspecialchars(
+                            (string) $selectedActivity['name'],
+                        ) ?> work.</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-open-modal="subtype-create-modal">Add Subtype</button>
+                </div>
+
+                <?php if ($subtypes === []): ?>
+                    <div class="activities-empty">
+                        <div class="activities-empty__content">
+                            <h3 class="text-h3">No subtypes yet</h3>
+                            <p class="text-muted">Subtypes help break this activity into more specific work streams.</p>
+                            <button type="button" class="btn btn-primary" data-open-modal="subtype-create-modal">Create First Subtype</button>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="activities-subtypes">
+                        <?php foreach ($subtypes as $index => $subtype): ?>
+                            <article class="activities-subtype">
+                                <div class="activities-subtype__body">
+                                    <span class="activities-subtype__dot" style="background: <?= subtype_dot_color(
+                                        $index,
+                                    ) ?>"></span>
+                                    <span class="activities-subtype__name"><?= htmlspecialchars(
+                                        (string) $subtype['name'],
+                                    ) ?></span>
+                                </div>
+                                <div class="activities-subtype__actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-ghost btn-sm activities-icon-button"
+                                        data-delete-subtype
+                                        data-subtype-id="<?= (int) $subtype[
+                                            'id'
+                                        ] ?>"
+                                        data-activity-id="<?= (int) $selectedActivity[
+                                            'id'
+                                        ] ?>"
+                                        data-subtype-name="<?= htmlspecialchars(
+                                            (string) $subtype['name'],
+                                            ENT_QUOTES,
+                                        ) ?>"
+                                        aria-label="Delete <?= htmlspecialchars(
+                                            (string) $subtype['name'],
+                                        ) ?>"
+                                        title="Delete subtype"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                                    </button>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+        </section>
+    </div>
+</div>
+
+<div id="activity-create-modal" class="activities-modal" hidden>
+    <div class="activities-modal__backdrop" data-close-modal></div>
+    <div class="card activities-modal__dialog">
+        <div class="activities-modal__header">
+            <h2 class="text-h3">Create activity</h2>
+            <p class="text-muted">Add a top-level category for the work you want to track.</p>
         </div>
-    </div>
-</div>
-
-<!-- ================= MODERN MODALS ================= -->
-
-<!-- New Activity Modal -->
-<div id="actM" class="modal">
-    <div class="modal-content">
-        <h3 style="margin:0">New Activity</h3>
-        <form method="POST">
+        <form method="POST" class="activities-modal__form">
             <input type="hidden" name="action" value="add_activity">
-            <input type="text" name="name" placeholder="Category Name" required autofocus>
-            <button type="submit" class="btn-new-act" style="width:100%">Create Activity</button>
-            <button type="button" onclick="closeM('actM')" style="width:100%; background:none; border:none; color:#888; margin-top:15px; cursor:pointer;">Cancel</button>
+            <div class="form-group">
+                <label class="form-label" for="activity-create-name">Name</label>
+                <input id="activity-create-name" class="input" type="text" name="name" maxlength="100" placeholder="Activity name" required>
+            </div>
+            <div class="activities-modal__actions">
+                <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Activity</button>
+            </div>
         </form>
     </div>
 </div>
 
-<!-- Add Subtype Modal -->
-<div id="subM" class="modal">
-    <div class="modal-content">
-        <h3 style="margin:0">Add Subtype</h3>
-        <form method="POST">
+<div id="subtype-create-modal" class="activities-modal" hidden>
+    <div class="activities-modal__backdrop" data-close-modal></div>
+    <div class="card activities-modal__dialog">
+        <div class="activities-modal__header">
+            <h2 class="text-h3">Add subtype</h2>
+            <p class="text-muted">Create a more specific label inside this activity.</p>
+        </div>
+        <form method="POST" class="activities-modal__form">
             <input type="hidden" name="action" value="add_subtype">
-            <input type="hidden" name="activity_id" value="<?= $selectedId ?>">
-            <input type="text" name="name" placeholder="Subtype Name" required autofocus>
-            <button type="submit" class="btn-new-act" style="width:100%">Add Subtype</button>
-            <button type="button" onclick="closeM('subM')" style="width:100%; background:none; border:none; color:#888; margin-top:15px; cursor:pointer;">Cancel</button>
+            <input type="hidden" name="activity_id" value="<?= (int) ($selectedActivity[
+                'id'
+            ] ?? 0) ?>">
+            <div class="form-group">
+                <label class="form-label" for="subtype-create-name">Name</label>
+                <input id="subtype-create-name" class="input" type="text" name="name" maxlength="100" placeholder="Subtype name" required>
+            </div>
+            <div class="activities-modal__actions">
+                <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Subtype</button>
+            </div>
         </form>
     </div>
 </div>
 
-<!-- Modern RENAME Modal -->
-<div id="renameM" class="modal">
-    <div class="modal-content">
-        <h3 style="margin:0">Rename Category</h3>
-        <form method="POST">
+<div id="activity-rename-modal" class="activities-modal" hidden>
+    <div class="activities-modal__backdrop" data-close-modal></div>
+    <div class="card activities-modal__dialog">
+        <div class="activities-modal__header">
+            <h2 class="text-h3">Rename activity</h2>
+            <p class="text-muted">Update the visible name for this category.</p>
+        </div>
+        <form method="POST" class="activities-modal__form">
             <input type="hidden" name="action" value="rename_activity">
-            <input type="hidden" name="id" id="rename_act_id">
-            <input type="text" name="new_name" id="rename_act_name" required autofocus>
-            <button type="submit" class="btn-new-act" style="width:100%">Save Changes</button>
-            <button type="button" onclick="closeM('renameM')" style="width:100%; background:none; border:none; color:#888; margin-top:15px; cursor:pointer;">Cancel</button>
+            <input type="hidden" name="id" id="rename-activity-id">
+            <div class="form-group">
+                <label class="form-label" for="rename-activity-name">Name</label>
+                <input id="rename-activity-name" class="input" type="text" name="new_name" maxlength="100" required>
+            </div>
+            <div class="activities-modal__actions">
+                <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
         </form>
     </div>
 </div>
 
-<!-- Modern DELETE Confirmation Modal -->
-<div id="deleteM" class="modal">
-    <div class="modal-content">
-        <h3 style="margin:0; color: #e74c3c;">Confirm Deletion</h3>
-        <p style="color: #bbb; font-size: 14px; margin-top: 15px; line-height: 1.5;">Are you sure you want to delete this? All related data will be permanently removed.</p>
-        <form method="POST" style="margin-top: 20px;">
-            <input type="hidden" name="action" id="delete_action">
-            <input type="hidden" name="id" id="delete_id">
-            <input type="hidden" name="activity_id" id="delete_activity_id">
-            <button type="submit" class="btn-danger">Yes, Delete</button>
-            <button type="button" onclick="closeM('deleteM')" style="width:100%; background:none; border:none; color:#888; margin-top:15px; cursor:pointer;">Cancel</button>
+<div id="delete-confirmation-modal" class="activities-modal" hidden>
+    <div class="activities-modal__backdrop" data-close-modal></div>
+    <div class="card activities-modal__dialog">
+        <div class="activities-modal__header">
+            <h2 class="text-h3">Confirm deletion</h2>
+            <p id="delete-confirmation-copy" class="activities-modal__danger-copy">This action cannot be undone.</p>
+        </div>
+        <form method="POST" class="activities-modal__form">
+            <input type="hidden" name="action" id="delete-action">
+            <input type="hidden" name="id" id="delete-id">
+            <input type="hidden" name="activity_id" id="delete-activity-id" value="">
+            <div class="activities-modal__actions">
+                <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </div>
         </form>
     </div>
 </div>
 
 <script>
-    function openM(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeM(id) { document.getElementById(id).style.display = 'none'; }
-    
-    // Open Rename Modal instead of prompt
-    function openRenameModal(id, oldName) {
-        document.getElementById('rename_act_id').value = id;
-        document.getElementById('rename_act_name').value = oldName;
-        openM('renameM');
+const activitiesModals = Array.from(document.querySelectorAll('.activities-modal'));
+
+function openActivitiesModal(modalId) {
+  const modal = document.getElementById(modalId);
+
+  if (!(modal instanceof HTMLElement)) {
+    return;
+  }
+
+  modal.hidden = false;
+  const focusTarget = modal.querySelector('input, button, textarea, select');
+  if (focusTarget instanceof HTMLElement) {
+    focusTarget.focus();
+  }
+}
+
+function closeActivitiesModal(modal) {
+  modal.hidden = true;
+}
+
+document.querySelectorAll('[data-open-modal]').forEach((button) => {
+  button.addEventListener('click', () => {
+    openActivitiesModal(button.dataset.openModal);
+  });
+});
+
+document.querySelectorAll('[data-close-modal]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const modal = button.closest('.activities-modal');
+    if (modal instanceof HTMLElement) {
+      closeActivitiesModal(modal);
+    }
+  });
+});
+
+document.querySelectorAll('[data-rename-activity]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const idField = document.getElementById('rename-activity-id');
+    const nameField = document.getElementById('rename-activity-name');
+
+    if (!(idField instanceof HTMLInputElement) || !(nameField instanceof HTMLInputElement)) {
+      return;
     }
 
-    // Open Delete Modal instead of confirm
-    function openDeleteModal(type, id, activityId = '') {
-        if (type === 'activity') {
-            document.getElementById('delete_action').value = 'delete_activity';
-            document.getElementById('delete_id').value = id;
-            document.getElementById('delete_activity_id').value = '';
-        } else {
-            document.getElementById('delete_action').value = 'delete_subtype';
-            document.getElementById('delete_id').value = id;
-            document.getElementById('delete_activity_id').value = activityId;
-        }
-        openM('deleteM');
+    idField.value = button.dataset.activityId || '';
+    nameField.value = button.dataset.activityName || '';
+    openActivitiesModal('activity-rename-modal');
+  });
+});
+
+document.querySelectorAll('[data-delete-activity]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const actionField = document.getElementById('delete-action');
+    const idField = document.getElementById('delete-id');
+    const activityIdField = document.getElementById('delete-activity-id');
+    const copy = document.getElementById('delete-confirmation-copy');
+
+    if (!(actionField instanceof HTMLInputElement) || !(idField instanceof HTMLInputElement) || !(activityIdField instanceof HTMLInputElement) || !(copy instanceof HTMLElement)) {
+      return;
     }
 
-    // Click outside to close modals
-    window.onclick = function(e) { 
-        if(e.target.classList.contains('modal')) e.target.style.display = 'none'; 
+    actionField.value = 'delete_activity';
+    idField.value = button.dataset.activityId || '';
+    activityIdField.value = '';
+    copy.textContent = `Delete ${button.dataset.activityName || 'this activity'}? This cannot be undone.`;
+    openActivitiesModal('delete-confirmation-modal');
+  });
+});
+
+document.querySelectorAll('[data-delete-subtype]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const actionField = document.getElementById('delete-action');
+    const idField = document.getElementById('delete-id');
+    const activityIdField = document.getElementById('delete-activity-id');
+    const copy = document.getElementById('delete-confirmation-copy');
+
+    if (!(actionField instanceof HTMLInputElement) || !(idField instanceof HTMLInputElement) || !(activityIdField instanceof HTMLInputElement) || !(copy instanceof HTMLElement)) {
+      return;
     }
+
+    actionField.value = 'delete_subtype';
+    idField.value = button.dataset.subtypeId || '';
+    activityIdField.value = button.dataset.activityId || '';
+    copy.textContent = `Delete ${button.dataset.subtypeName || 'this subtype'}? This cannot be undone.`;
+    openActivitiesModal('delete-confirmation-modal');
+  });
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') {
+    return;
+  }
+
+  activitiesModals.forEach((modal) => {
+    if (!modal.hidden) {
+      closeActivitiesModal(modal);
+    }
+  });
+});
 </script>
 
-<?php require_once 'footer.php';
-?>
+<?php require_once 'footer.php'; ?>
