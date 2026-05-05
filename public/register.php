@@ -1,10 +1,8 @@
 <?php
 require_once __DIR__ . '/../src/db.php';
 require_once __DIR__ . '/../src/auth/helpers.php';
-require_once __DIR__ . '/../src/auth/dev_login.php';
 
 start_session();
-apply_dev_auto_login($pdo);
 
 if (!empty($_SESSION['user_id'])) {
     header('Location: /');

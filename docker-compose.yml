@@ -7,9 +7,6 @@ services:
       - '8888:8080'
     environment:
       TZ: 'Asia/Dhaka'
-      DEV_AUTO_LOGIN_ENABLED: '1'
-      DEV_AUTO_LOGIN_EMAIL: 'dev@example.com'
-      DEV_AUTO_LOGIN_USERNAME: 'Dev User'
     volumes:
       - ./public:/var/www/html
       - ./scripts:/var/www/scripts

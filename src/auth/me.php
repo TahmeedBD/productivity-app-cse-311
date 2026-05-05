@@ -14,10 +14,8 @@
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/helpers.php';
-require_once __DIR__ . '/dev_login.php';
 
 start_session();
-apply_dev_auto_login($pdo);
 
 if (empty($_SESSION['user_id'])) {
     json_response(['ok' => false, 'error' => 'Not authenticated.'], 401);
