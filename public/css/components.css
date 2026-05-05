@@ -18,13 +18,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-5);
   height: 100%;
 }
 
-.nav-actions {
+.nav-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  min-width: 0;
 }
 
 .nav-logo {
@@ -43,14 +44,36 @@
   font-weight: var(--font-weight-medium);
 }
 
+.nav-welcome {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.nav-account__action {
+  white-space: nowrap;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   list-style: none;
+  margin-left: auto;
+  margin-right: var(--space-4);
 }
 
-.nav-links a {
+.nav-links a,
+.nav-link-button {
   display: inline-block;
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
@@ -58,35 +81,52 @@
   color: var(--color-text-sub);
   text-decoration: none;
   border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  cursor: pointer;
   transition:
     color var(--transition-fast),
     background var(--transition-fast);
 }
 
-.nav-links a:hover {
+.nav-links a:hover,
+.nav-link-button:hover {
   color: var(--color-text);
   background: var(--color-surface-up);
 }
 
-.nav-links a.active {
+.nav-links a.active,
+.nav-link-button.active {
   color: var(--color-primary);
   background: var(--color-primary-faint);
 }
 
-.nav-session {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
+@media (max-width: 980px) {
+  .nav-content {
+    height: auto;
+    min-height: var(--nav-height);
+    padding-block: var(--space-3);
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-.nav-session__user {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  .nav-brand,
+  .nav-links,
+  .nav-account {
+    width: 100%;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    margin: 0;
+  }
+
+  .nav-account {
+    padding-left: 0;
+    padding-top: var(--space-2);
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
 }
 
 /* ── Buttons ─────────────────────────────────────────────── */

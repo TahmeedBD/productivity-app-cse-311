@@ -53,52 +53,58 @@ if (!function_exists('asset_path')) {
     : '' ?>>
     <nav class="navbar" role="navigation" aria-label="Main navigation">
         <div class="container nav-content">
-            <a href="/" class="nav-logo">
-                ⏱ Productivity<span>Tracker</span>
-            </a>
-            <div class="nav-actions">
-                <ul class="nav-links" role="list">
-                    <li><a href="/" <?= basename($_SERVER['PHP_SELF']) ===
-                    'index.php'
-                        ? 'class="active" aria-current="page"'
-                        : '' ?>>Dashboard</a></li>
-                    <li><a href="/reports.php" <?= basename(
-                        $_SERVER['PHP_SELF'],
-                    ) === 'reports.php'
-                        ? 'class="active" aria-current="page"'
-                        : '' ?>>Overview</a></li>
-                    <li><a href="/activities.php" <?= basename(
-                        $_SERVER['PHP_SELF'],
-                    ) === 'activities.php'
-                        ? 'class="active" aria-current="page"'
-                        : '' ?>>Activities</a></li>
-                    <li><a href="/time_logger.php" <?= basename(
-                        $_SERVER['PHP_SELF'],
-                    ) === 'time_logger.php'
-                        ? 'class="active" aria-current="page"'
-                        : '' ?>>Time Log</a></li>
-                    <li><a href="/settings.php" <?= basename(
-                        $_SERVER['PHP_SELF'],
-                    ) === 'settings.php'
-                        ? 'class="active" aria-current="page"'
-                        : '' ?>>Settings</a></li>
-                </ul>
+            <div class="nav-brand">
+                <a href="/" class="nav-logo">
+                    ⏱ Productivity<span>Tracker</span>
+                </a>
+            </div>
+            <ul class="nav-links" role="list">
+                <li><a href="/" <?= basename($_SERVER['PHP_SELF']) ===
+                'index.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Dashboard</a></li>
+                <li><a href="/reports.php" <?= basename(
+                    $_SERVER['PHP_SELF'],
+                ) === 'reports.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Overview</a></li>
+                <li><a href="/activities.php" <?= basename(
+                    $_SERVER['PHP_SELF'],
+                ) === 'activities.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Activities</a></li>
+                <li><a href="/time_logger.php" <?= basename(
+                    $_SERVER['PHP_SELF'],
+                ) === 'time_logger.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Time Log</a></li>
+                <li><a href="/settings.php" <?= basename(
+                    $_SERVER['PHP_SELF'],
+                ) === 'settings.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Settings</a></li>
+            </ul>
+            <div class="nav-account">
                 <?php if (isset($currentUser)): ?>
-                    <div class="nav-session">
-                        <span class="nav-session__user"><?= htmlspecialchars(
-                            (string) ($currentUser['username'] ?? ''),
-                        ) ?></span>
-                        <button
-                            type="button"
-                            id="nav-logout-button"
-                            class="btn btn-ghost btn-sm"
-                            data-csrf-token="<?= htmlspecialchars(
-                                (string) ($_SESSION['csrf_token'] ?? ''),
-                            ) ?>"
-                        >
-                            Logout
-                        </button>
-                    </div>
+                    <span class="nav-welcome">Welcome, <?= htmlspecialchars(
+                        (string) ($currentUser['username'] ?? ''),
+                    ) ?>!</span>
+                    <button
+                        type="button"
+                        id="nav-logout-button"
+                        class="nav-link-button nav-account__action"
+                        data-csrf-token="<?= htmlspecialchars(
+                            (string) ($_SESSION['csrf_token'] ?? ''),
+                        ) ?>"
+                    >
+                        Logout
+                    </button>
+                <?php else: ?>
+                    <a href="/login.php" class="nav-link-button nav-account__action" <?= basename(
+                        $_SERVER['PHP_SELF'],
+                    ) === 'login.php'
+                        ? 'aria-current="page"'
+                        : '' ?>>Login</a>
                 <?php endif; ?>
             </div>
         </div>
