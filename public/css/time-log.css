@@ -151,10 +151,6 @@
   color: var(--color-text);
 }
 
-.time-log-select.is-placeholder-selected {
-  color: var(--color-text-muted);
-}
-
 .time-log-notes-input {
   min-height: 140px;
   height: auto;

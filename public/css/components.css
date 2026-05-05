@@ -205,11 +205,88 @@
   padding: 0 var(--space-3);
 }
 
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: calc(var(--space-4) + 28px);
+  color: var(--color-text-strong);
+  cursor: pointer;
+  background:
+    linear-gradient(180deg, rgba(255, 234, 206, 0.05), rgba(255, 234, 206, 0)),
+    linear-gradient(45deg, transparent 50%, var(--color-text-sub) 50%),
+    linear-gradient(135deg, var(--color-text-sub) 50%, transparent 50%),
+    linear-gradient(180deg, rgba(255, 234, 206, 0.04), rgba(15, 13, 11, 0.22)),
+    var(--color-surface-alt);
+  background-repeat: no-repeat;
+  background-size:
+    100% 100%,
+    7px 7px,
+    7px 7px,
+    44px 100%,
+    100% 100%;
+  background-position:
+    0 0,
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px),
+    100% 0,
+    0 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 206, 0.04),
+    0 1px 0 rgba(0, 0, 0, 0.22);
+}
+
 .textarea {
   padding: var(--space-3);
   resize: vertical;
   min-height: 96px;
   line-height: var(--line-height-normal);
+}
+
+.select::-ms-expand {
+  display: none;
+}
+
+.select option {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--color-warm-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 206, 0.05),
+    0 0 0 1px rgba(217, 119, 6, 0.08);
+}
+
+.select.is-placeholder-selected:not(:disabled) {
+  color: var(--color-text-sub);
+}
+
+.select:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  background:
+    linear-gradient(180deg, rgba(255, 234, 206, 0.02), rgba(255, 234, 206, 0)),
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%),
+    linear-gradient(180deg, rgba(255, 234, 206, 0.02), rgba(15, 13, 11, 0.12)),
+    color-mix(in srgb, var(--color-surface-alt) 90%, black 10%);
+  background-repeat: no-repeat;
+  background-size:
+    100% 100%,
+    7px 7px,
+    7px 7px,
+    44px 100%,
+    100% 100%;
+  background-position:
+    0 0,
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px),
+    100% 0,
+    0 0;
+  box-shadow: none;
 }
 
 .input::placeholder,
