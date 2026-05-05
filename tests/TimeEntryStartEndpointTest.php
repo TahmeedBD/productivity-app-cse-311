@@ -99,6 +99,43 @@ final class TimeEntryStartEndpointTest extends TestCase
         $this->assertSame('', $response['body']['entry']['notes']);
     }
 
+    public function testStartEntryResponseAcceptsDateFromPayload(): void
+    {
+        $response = build_start_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '2026-05-11',
+                'start' => '11:20:00',
+            ],
+        );
+
+        $this->assertSame(201, $response['status']);
+        $this->assertSame(
+            '2026-05-11 11:20:00',
+            $response['body']['entry']['start'],
+        );
+    }
+
+    public function testStartEntryResponseRejectsInvalidPayloadDate(): void
+    {
+        $response = build_start_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '05/11/2026',
+                'start' => '11:20:00',
+            ],
+        );
+
+        $this->assertSame(422, $response['status']);
+        $this->assertFalse($response['body']['ok']);
+        $this->assertSame(
+            'date must be in YYYY-MM-DD format.',
+            $response['body']['error'],
+        );
+    }
+
     public function testStartEntryResponseStopsCurrentEntryAndStartsBlankNextEntry(): void
     {
         build_start_time_entry_response(

@@ -29,25 +29,35 @@ function build_start_time_entry_response(
         ['options' => ['min_range' => 1]],
     );
 
-    // TODO: Handle case where client is in a different timezone than the server.
+    try {
+        $resolvedDate =
+            $date ??
+            normalize_time_entry_request_date($payload['date'] ?? null);
+    } catch (\InvalidArgumentException $exception) {
+        return [
+            'status' => 422,
+            'body' => [
+                'ok' => false,
+                'error' => $exception->getMessage(),
+            ],
+        ];
+    }
 
     if ($startTime === '') {
         $startTime = $currentTime ?? date('H:i:s');
     }
 
+    if ($resolvedDate === null) {
+        $resolvedDate = date('Y-m-d');
+    }
+
     try {
-        $entry = start_time_entry(
-            $pdo,
-            $userId,
-            $date ?? date('Y-m-d'),
-            $startTime,
-            [
-                'activity_id' => $activityId === false ? null : $activityId,
-                'activity_subtype_id' =>
-                    $activitySubtypeId === false ? null : $activitySubtypeId,
-                'notes' => $notes,
-            ],
-        );
+        $entry = start_time_entry($pdo, $userId, $resolvedDate, $startTime, [
+            'activity_id' => $activityId === false ? null : $activityId,
+            'activity_subtype_id' =>
+                $activitySubtypeId === false ? null : $activitySubtypeId,
+            'notes' => $notes,
+        ]);
 
         return [
             'status' => 201,

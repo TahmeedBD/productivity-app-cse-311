@@ -52,17 +52,30 @@ function build_save_running_time_entry_response(
     $notes = (string) ($payload['notes'] ?? '');
 
     try {
-        $entry = save_running_time_entry(
-            $pdo,
-            $userId,
-            $date ?? date('Y-m-d'),
-            [
-                'activity_id' => $activityId === false ? null : $activityId,
-                'activity_subtype_id' =>
-                    $activitySubtypeId === false ? null : $activitySubtypeId,
-                'notes' => $notes,
+        $resolvedDate =
+            $date ??
+            normalize_time_entry_request_date($payload['date'] ?? null);
+    } catch (\InvalidArgumentException $exception) {
+        return [
+            'status' => 422,
+            'body' => [
+                'ok' => false,
+                'error' => $exception->getMessage(),
             ],
-        );
+        ];
+    }
+
+    if ($resolvedDate === null) {
+        $resolvedDate = date('Y-m-d');
+    }
+
+    try {
+        $entry = save_running_time_entry($pdo, $userId, $resolvedDate, [
+            'activity_id' => $activityId === false ? null : $activityId,
+            'activity_subtype_id' =>
+                $activitySubtypeId === false ? null : $activitySubtypeId,
+            'notes' => $notes,
+        ]);
     } catch (\InvalidArgumentException $exception) {
         return [
             'status' => 422,

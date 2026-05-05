@@ -35,6 +35,28 @@
   --color-danger-hover: #b84a7b;
   --color-danger-faint: rgba(219, 82, 80, 0.12);
 
+  /* ─── Activity Tag Palette ──────────────────────────────── */
+  --color-tag-01: #00b2c8;
+  --color-tag-02: #dfe0df;
+  --color-tag-03: #9675ff;
+  --color-tag-04: #00b098;
+  --color-tag-05: #63baab;
+  --color-tag-06: #c3fcf1;
+  --color-tag-07: #ff8a4f;
+  --color-tag-08: #ffa287;
+  --color-tag-09: #2d8318;
+  --color-tag-10: #007360;
+  --color-tag-11: #ffdb75;
+  --color-tag-12: #dfe0df;
+  --color-tag-13: #38beac;
+  --color-tag-14: #00ad92;
+  --color-tag-15: #00a954;
+  --color-tag-16: #00ad43;
+  --color-tag-17: #b78a00;
+  --color-tag-18: #a68200;
+  --color-tag-19: #6f8500;
+  --color-tag-20: #de9a89;
+
   /* ─── Text ──────────────────────────────────────────────── */
   --color-text: #efbc95; /* warm cream — from palette */
   --color-text-strong: #ffeace; /* highlight / headings      */

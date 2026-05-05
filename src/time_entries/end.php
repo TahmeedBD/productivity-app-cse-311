@@ -102,11 +102,27 @@ function build_end_time_entry_response(
         ['options' => ['min_range' => 1]],
     );
 
+    try {
+        $resolvedDate =
+            $date ??
+            normalize_time_entry_request_date($payload['date'] ?? null);
+    } catch (\InvalidArgumentException $exception) {
+        return [
+            'status' => 422,
+            'body' => [
+                'ok' => false,
+                'error' => $exception->getMessage(),
+            ],
+        ];
+    }
+
     if ($endTime === '') {
         $endTime = $currentTime ?? date('H:i:s');
     }
 
-    $resolvedDate = $date ?? date('Y-m-d');
+    if ($resolvedDate === null) {
+        $resolvedDate = date('Y-m-d');
+    }
 
     try {
         $entry = end_time_entry($pdo, $userId, $resolvedDate, $endTime, [

@@ -104,4 +104,45 @@ final class TimeEntrySaveEndpointTest extends TestCase
         $this->assertSame(422, $response['status']);
         $this->assertFalse($response['body']['ok']);
     }
+
+    public function testSaveRunningEntryResponseAcceptsDateFromPayload(): void
+    {
+        start_time_entry($this->pdo, 'user-1', '2026-05-21', '09:00:00');
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
+        $response = build_save_running_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '2026-05-21',
+                'activity_id' => $activity['id'],
+                'notes' => 'Saved via payload date',
+            ],
+        );
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame(
+            'Saved via payload date',
+            $response['body']['entry']['notes'],
+        );
+    }
+
+    public function testSaveRunningEntryResponseRejectsInvalidPayloadDate(): void
+    {
+        $response = build_save_running_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '05/21/2026',
+                'notes' => 'Invalid date',
+            ],
+        );
+
+        $this->assertSame(422, $response['status']);
+        $this->assertFalse($response['body']['ok']);
+        $this->assertSame(
+            'date must be in YYYY-MM-DD format.',
+            $response['body']['error'],
+        );
+    }
 }

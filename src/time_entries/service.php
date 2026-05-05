@@ -36,6 +36,23 @@ function combine_date_and_time(string $date, string $time): string
     return $date . ' ' . $time;
 }
 
+function normalize_time_entry_request_date(?string $value): ?string
+{
+    $resolved = trim((string) $value);
+
+    if ($resolved === '') {
+        return null;
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $resolved)) {
+        throw new \InvalidArgumentException(
+            'date must be in YYYY-MM-DD format.',
+        );
+    }
+
+    return $resolved;
+}
+
 function extract_time_component(string $timestamp): ?string
 {
     $parts = explode(' ', $timestamp);

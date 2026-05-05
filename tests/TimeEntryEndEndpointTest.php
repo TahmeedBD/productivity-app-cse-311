@@ -112,6 +112,47 @@ final class TimeEntryEndEndpointTest extends TestCase
         );
     }
 
+    public function testEndEntryResponseAcceptsDateFromPayload(): void
+    {
+        start_time_entry($this->pdo, 'user-1', '2026-05-17', '09:00:00');
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
+        $response = build_end_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '2026-05-17',
+                'end' => '10:45:00',
+                'activity_id' => $activity['id'],
+            ],
+        );
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame(
+            '2026-05-17 10:45:00',
+            $response['body']['entry']['end'],
+        );
+    }
+
+    public function testEndEntryResponseRejectsInvalidPayloadDate(): void
+    {
+        $response = build_end_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '05/17/2026',
+                'end' => '10:45:00',
+            ],
+        );
+
+        $this->assertSame(422, $response['status']);
+        $this->assertFalse($response['body']['ok']);
+        $this->assertSame(
+            'date must be in YYYY-MM-DD format.',
+            $response['body']['error'],
+        );
+    }
+
     public function testEndEntryResponseReturns422WhenNoRunningEntry(): void
     {
         $response = build_end_time_entry_response(

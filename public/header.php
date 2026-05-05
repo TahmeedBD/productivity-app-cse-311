@@ -30,26 +30,26 @@
                 'index.php'
                     ? 'class="active" aria-current="page"'
                     : '' ?>>Dashboard</a></li>
+                <li><a href="/reports.php" <?= basename(
+                    $_SERVER['PHP_SELF'],
+                ) === 'reports.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Overview</a></li>
                 <li><a href="/activities.php" <?= basename(
                     $_SERVER['PHP_SELF'],
                 ) === 'activities.php'
                     ? 'class="active" aria-current="page"'
                     : '' ?>>Activities</a></li>
-                <li><a href="/routines.php" <?= basename(
-                    $_SERVER['PHP_SELF'],
-                ) === 'routines.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Routines</a></li>
                 <li><a href="/time_logger.php" <?= basename(
                     $_SERVER['PHP_SELF'],
                 ) === 'time_logger.php'
                     ? 'class="active" aria-current="page"'
                     : '' ?>>Time Log</a></li>
-                <li><a href="/reports.php" <?= basename(
+                <li><a href="/settings.php" <?= basename(
                     $_SERVER['PHP_SELF'],
-                ) === 'reports.php'
+                ) === 'settings.php'
                     ? 'class="active" aria-current="page"'
-                    : '' ?>>Reports</a></li>
+                    : '' ?>>Settings</a></li>
             </ul>
         </div>
     </nav>

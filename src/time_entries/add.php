@@ -176,7 +176,22 @@ function build_add_past_time_entry_response(
         ];
     }
 
-    $resolvedDate = $date ?? date('Y-m-d');
+    try {
+        $payloadDate = normalize_time_entry_request_date(
+            $payload['date'] ?? null,
+        );
+    } catch (\InvalidArgumentException $exception) {
+        return [
+            'status' => 422,
+            'body' => [
+                'ok' => false,
+                'error' => $exception->getMessage(),
+            ],
+        ];
+    }
+
+    $resolvedDate =
+        $date ?? ($payloadDate !== null ? $payloadDate : date('Y-m-d'));
 
     try {
         $entry = add_past_time_entry(

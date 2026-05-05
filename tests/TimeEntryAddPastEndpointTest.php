@@ -198,4 +198,49 @@ final class TimeEntryAddPastEndpointTest extends TestCase
             (int) $response['body']['entry']['activity_subtype_id'],
         );
     }
+
+    public function testAddPastEntryResponseAcceptsDateFromPayload(): void
+    {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
+        $response = build_add_past_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '2026-05-19',
+                'start' => '09:00:00',
+                'end' => '09:30:00',
+                'activity_id' => $activity['id'],
+            ],
+        );
+
+        $this->assertSame(201, $response['status']);
+        $this->assertSame(
+            '2026-05-19 09:00:00',
+            $response['body']['entry']['start'],
+        );
+    }
+
+    public function testAddPastEntryResponseRejectsInvalidPayloadDate(): void
+    {
+        $activity = create_activity($this->pdo, 'user-1', 'Work');
+
+        $response = build_add_past_time_entry_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'date' => '05/19/2026',
+                'start' => '09:00:00',
+                'end' => '09:30:00',
+                'activity_id' => $activity['id'],
+            ],
+        );
+
+        $this->assertSame(422, $response['status']);
+        $this->assertFalse($response['body']['ok']);
+        $this->assertSame(
+            'date must be in YYYY-MM-DD format.',
+            $response['body']['error'],
+        );
+    }
 }
