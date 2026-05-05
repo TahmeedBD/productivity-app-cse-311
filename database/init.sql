@@ -41,14 +41,12 @@ CREATE TABLE IF NOT EXISTS checklist_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     activity_id INT NOT NULL,
-    activity_subtype_id INT NOT NULL,
-    min_duration_minutes INT,
-    target_duration_minutes INT,
+    min_duration_minutes INT NOT NULL DEFAULT 20,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
-    FOREIGN KEY (activity_subtype_id) REFERENCES activity_subtypes(id) ON DELETE CASCADE
+    UNIQUE KEY unique_user_activity_checklist (user_id, activity_id)
 );
 
 CREATE TABLE IF NOT EXISTS daily_completions (
