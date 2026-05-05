@@ -1,164 +1,93 @@
-<?php
-require_once __DIR__ . '/../src/db.php';
-require_once __DIR__ . '/../src/auth/helpers.php';
-
-start_session();
-
-if (!empty($_SESSION['user_id'])) {
-    header('Location: /');
-    exit();
-}
-?>
+<?php require_once __DIR__ . '/auth_bootstrap.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Register - Productivity Tracker</title>
-<style>
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #1a1512;
-    font-family: system-ui, -apple-system, sans-serif;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    color: #fff;
-}
-.page-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-.page-header h1 {
-    color: #ffb076;
-    margin: 0 0 10px 0;
-    font-size: 28px;
-}
-.page-header p {
-    color: #a09893;
-    font-size: 15px;
-}
-.register-container {
-    background-color: #26211e;
-    padding: 40px;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 420px;
-    box-sizing: border-box;
-}
-.form-group {
-    margin-bottom: 20px;
-}
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #d4cfcc;
-    text-transform: uppercase;
-}
-.input-wrapper {
-    position: relative;
-}
-.form-control {
-    width: 100%;
-    padding: 12px;
-    background-color: #1a1512;
-    border: 1px solid #332d29;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-.form-control:focus {
-    outline: none;
-    border-color: #ffb076;
-}
-.toggle-password {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #a09893;
-    user-select: none;
-}
-.btn-submit {
-    width: 100%;
-    padding: 14px;
-    background-color: #ffb076;
-    color: #1a1512;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 10px;
-}
-#register-error {
-    color: #ff6b6b;
-    font-size: 14px;
-    margin-bottom: 15px;
-    text-align: center;
-}
-.footer {
-    text-align: center;
-    margin-top: 24px;
-    font-size: 14px;
-    color: #a09893;
-}
-.footer a {
-    color: #ffb076;
-    text-decoration: none;
-    font-weight: 600;
-}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="<?= htmlspecialchars(
+    asset_path('/css/style.css'),
+) ?>">
+<link rel="stylesheet" href="<?= htmlspecialchars(
+    asset_path('/css/auth.css'),
+) ?>">
 </head>
-<body>
-
-<div class="page-header">
-    <h1>Productivity Tracker</h1>
-    <p>Create an account to get started.</p>
-</div>
-
-<div class="register-container">
-    <div id="register-error"></div>
-    <form id="register-form">
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" name="username" class="form-control" placeholder="Enter your username" required>
-        </div>
-
-        <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" name="email" class="form-control" placeholder="you@example.com" required>
-        </div>
-
-        <div class="form-group">
-            <label>Password</label>
-            <div class="input-wrapper">
-                <input type="password" id="reg-pass" name="password" class="form-control" placeholder="••••••••" required>
-                <span class="toggle-password" onclick="togglePass('reg-pass')">👁️</span>
+<body class="auth-page">
+<main class="auth-shell">
+    <div class="container auth-layout">
+        <section class="card card-featured auth-story">
+            <div class="auth-story__title">
+                <h1 class="text-h1">Build a cleaner system for your day.</h1>
+                <p class="text-muted">Create an account to track focused work, review your day visually, and keep activities organized under one personal timeline.</p>
             </div>
-        </div>
-
-        <div class="form-group">
-            <label>Confirm Password</label>
-            <div class="input-wrapper">
-                <input type="password" id="conf-pass" name="confirm_password" class="form-control" placeholder="••••••••" required>
-                <span class="toggle-password" onclick="togglePass('conf-pass')">👁️</span>
+            <div class="auth-story__list">
+                <div class="auth-story__item">
+                    <span class="auth-story__item-title">Daily structure first</span>
+                    <p class="text-muted">Log entries against real wake and sleep windows so the overview stays meaningful.</p>
+                </div>
+                <div class="auth-story__item">
+                    <span class="auth-story__item-title">One account, one history</span>
+                    <p class="text-muted">Your activities, reports, and tracking data stay scoped to your own session.</p>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <button type="submit" class="btn-submit">Create Account</button>
-    </form>
-    <div class="footer">
-        Already have an account? <a href="login.php">Sign in</a>
+        <section class="card auth-form-card">
+            <div class="auth-form-card__header">
+                <h2 class="text-h2">Create account</h2>
+                <p class="text-muted">Set up your identity and start logging.</p>
+            </div>
+
+            <p id="register-error" class="alert alert-danger auth-error-summary" hidden></p>
+
+            <form id="register-form" class="auth-form" novalidate>
+                <div class="auth-field">
+                    <label class="form-label" for="register-username">Username</label>
+                    <input id="register-username" name="username" class="input" type="text" autocomplete="username" placeholder="How should we address you?">
+                    <p id="register-username-error" class="form-error" hidden></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="register-email">Email</label>
+                    <input id="register-email" name="email" class="input" type="text" inputmode="email" autocomplete="email" placeholder="name@example.com">
+                    <p id="register-email-error" class="form-error" hidden></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="register-password">Password</label>
+                    <div class="auth-field__control">
+                        <input id="register-password" name="password" class="input" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+                        <button type="button" class="auth-toggle" data-toggle-password="register-password">Show</button>
+                    </div>
+                    <p id="register-password-error" class="form-error" hidden></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="register-confirm-password">Confirm password</label>
+                    <div class="auth-field__control">
+                        <input id="register-confirm-password" name="confirm_password" class="input" type="password" autocomplete="new-password" placeholder="Repeat your password">
+                        <button type="button" class="auth-toggle" data-toggle-password="register-confirm-password">Show</button>
+                    </div>
+                    <p id="register-confirm-password-error" class="form-error" hidden></p>
+                </div>
+
+                <div class="auth-form__actions">
+                    <button type="submit" class="btn btn-primary btn-lg auth-submit">Create Account</button>
+                    <div class="auth-support">
+                        <span>Already have an account?</span>
+                        <a href="/login.php">Sign in instead</a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="auth-footer">
+                Usernames must be between 2 and 100 characters, and passwords must be at least 8 characters long.
+            </div>
+        </section>
     </div>
-</div>
+</main>
 
 <script>
 async function readJsonSafely(response) {
@@ -175,31 +104,94 @@ async function readJsonSafely(response) {
     }
 }
 
-function togglePass(id) {
-    const input = document.getElementById(id);
-    input.type = input.type === 'password' ? 'text' : 'password';
+function setFieldError(field, message) {
+    const error = document.getElementById(`${field.id}-error`);
+    field.classList.add('input-error');
+    field.setAttribute('aria-invalid', 'true');
+    if (error) {
+        error.textContent = message;
+        error.hidden = false;
+    }
+}
+
+function clearFieldError(field) {
+    const error = document.getElementById(`${field.id}-error`);
+    field.classList.remove('input-error');
+    field.removeAttribute('aria-invalid');
+    if (error) {
+        error.textContent = '';
+        error.hidden = true;
+    }
+}
+
+function showSummary(message) {
+    const errorBox = document.querySelector('#register-error');
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+}
+
+function clearSummary() {
+    const errorBox = document.querySelector('#register-error');
+    errorBox.textContent = '';
+    errorBox.hidden = true;
+}
+
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 document.querySelector('#register-form').addEventListener('submit', async function (event) {
     event.preventDefault();
-    const errorBox = document.querySelector('#register-error');
-    const submitButton = event.currentTarget.querySelector('.btn-submit');
-    errorBox.textContent = '';
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    const usernameField = document.querySelector('#register-username');
+    const emailField = document.querySelector('#register-email');
+    const passwordField = document.querySelector('#register-password');
+    const confirmPasswordField = document.querySelector('#register-confirm-password');
+    const username = usernameField.value.trim();
+    const email = emailField.value.trim();
+    const password = passwordField.value;
+    const confirmPassword = confirmPasswordField.value;
 
-    const username = document.querySelector('[name="username"]').value.trim();
-    const email = document.querySelector('[name="email"]').value.trim();
-    const password = document.querySelector('[name="password"]').value;
-    const confirm_password = document.querySelector('[name="confirm_password"]').value;
+    clearSummary();
+    [usernameField, emailField, passwordField, confirmPasswordField].forEach(clearFieldError);
 
-    if (password !== confirm_password) {
-        errorBox.textContent = 'Passwords do not match.';
+    let hasError = false;
+
+    if (username.length < 2 || username.length > 100) {
+        setFieldError(usernameField, 'Username must be between 2 and 100 characters.');
+        hasError = true;
+    }
+
+    if (email === '') {
+        setFieldError(emailField, 'Email is required.');
+        hasError = true;
+    } else if (!isValidEmail(email)) {
+        setFieldError(emailField, 'Enter a valid email address.');
+        hasError = true;
+    }
+
+    if (password.length < 8) {
+        setFieldError(passwordField, 'Password must be at least 8 characters.');
+        hasError = true;
+    }
+
+    if (confirmPassword === '') {
+        setFieldError(confirmPasswordField, 'Confirm your password.');
+        hasError = true;
+    } else if (password !== confirmPassword) {
+        setFieldError(confirmPasswordField, 'Passwords do not match.');
+        hasError = true;
+    }
+
+    if (hasError) {
+        showSummary('Fix the highlighted fields and try again.');
         return;
     }
 
     submitButton.disabled = true;
 
     try {
-        const response = await fetch('auth/register.php', {
+        const response = await fetch('/auth/register.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ username, email, password }),
@@ -208,16 +200,30 @@ document.querySelector('#register-form').addEventListener('submit', async functi
         const data = await readJsonSafely(response);
 
         if (!response.ok) {
-            errorBox.textContent = data?.error || 'Register failed. Please try again.';
+            showSummary(data?.error || 'Register failed. Please try again.');
             return;
         }
 
-        window.location.href = 'login.php';
+        window.location.href = '/login.php';
     } catch (error) {
-        errorBox.textContent = 'Unable to create your account right now. Please try again.';
+        showSummary('Unable to create your account right now. Please try again.');
     } finally {
         submitButton.disabled = false;
     }
+});
+
+document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.togglePassword);
+
+        if (!input) {
+            return;
+        }
+
+        const nextType = input.type === 'password' ? 'text' : 'password';
+        input.type = nextType;
+        button.textContent = nextType === 'password' ? 'Show' : 'Hide';
+    });
 });
 </script>
 </body>

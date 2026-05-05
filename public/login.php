@@ -1,171 +1,78 @@
-<?php
-require_once __DIR__ . '/../src/db.php';
-require_once __DIR__ . '/../src/auth/helpers.php';
-
-start_session();
-
-if (!empty($_SESSION['user_id'])) {
-    header('Location: /');
-    exit();
-}
-?>
+<?php require_once __DIR__ . '/auth_bootstrap.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - Productivity Tracker</title>
-<style>
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #1a1512;
-    font-family: system-ui, -apple-system, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    color: #fff;
-}
-.login-container {
-    background-color: #26211e;
-    padding: 40px;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    box-sizing: border-box;
-}
-.header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-.icon {
-    background-color: #3b2a1e;
-    color: #ffb076;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 auto 16px;
-    font-size: 24px;
-}
-.header h2 {
-    margin: 0 0 8px;
-    font-size: 24px;
-}
-.header p {
-    margin: 0;
-    color: #a09893;
-    font-size: 14px;
-}
-.form-group {
-    margin-bottom: 20px;
-    position: relative;
-}
-.form-group label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #d4cfcc;
-    text-transform: uppercase;
-}
-.form-group a {
-    color: #ffb076;
-    text-decoration: none;
-    text-transform: none;
-}
-.input-wrapper {
-    position: relative;
-}
-.form-control {
-    width: 100%;
-    padding: 12px;
-    background-color: #332d29;
-    border: 1px solid #4a423d;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-.toggle-password {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #a09893;
-    user-select: none;
-}
-.btn-submit {
-    width: 100%;
-    padding: 14px;
-    background-color: #ffb076;
-    color: #1a1512;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 10px;
-}
-#login-error {
-    color: #ff6b6b;
-    font-size: 14px;
-    margin-bottom: 15px;
-    text-align: center;
-}
-.footer {
-    text-align: center;
-    margin-top: 24px;
-    font-size: 14px;
-    color: #a09893;
-}
-.footer a {
-    color: #ffb076;
-    text-decoration: none;
-    font-weight: 600;
-}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="<?= htmlspecialchars(
+    asset_path('/css/style.css'),
+) ?>">
+<link rel="stylesheet" href="<?= htmlspecialchars(
+    asset_path('/css/auth.css'),
+) ?>">
 </head>
-<body>
-
-<div class="login-container">
-    <div class="header">
-        <div class="icon">⚡</div>
-        <h2>Productivity Tracker</h2>
-        <p>Sign in to continue your focus session.</p>
-    </div>
-
-    <div id="login-error"></div>
-
-    <form id="login-form">
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
-        </div>
-
-        <div class="form-group">
-            <label>
-                Password
-            </label>
-            <div class="input-wrapper">
-                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
-                <span class="toggle-password" onclick="togglePass('password')">👁️</span>
+<body class="auth-page">
+<main class="auth-shell">
+    <div class="container auth-layout">
+        <section class="card card-featured auth-story">
+            <div class="auth-story__title">
+                <h1 class="text-h1">Return to your day with context.</h1>
+                <p class="text-muted">Sign in to jump straight back into your timeline, overview, and activity tracking without losing the structure you already built.</p>
             </div>
-        </div>
+            <div class="auth-story__list">
+                <div class="auth-story__item">
+                    <span class="auth-story__item-title">Track current work instantly</span>
+                    <p class="text-muted">Pick up your running entry, review today’s log, and keep the day coherent.</p>
+                </div>
+                <div class="auth-story__item">
+                    <span class="auth-story__item-title">See the full day clearly</span>
+                    <p class="text-muted">Use Day Overview to inspect gaps, edit entries, and understand where time actually went.</p>
+                </div>
+            </div>
+        </section>
 
-        <button type="submit" class="btn-submit">Sign In</button>
-    </form>
+        <section class="card auth-form-card">
+            <div class="auth-form-card__header">
+                <h2 class="text-h2">Sign in</h2>
+                <p class="text-muted">Use your existing account to continue.</p>
+            </div>
 
-    <div class="footer">
-        Don't have an account? <a href="register.php">Register here</a>
+            <p id="login-error" class="alert alert-danger auth-error-summary" hidden></p>
+
+            <form id="login-form" class="auth-form" novalidate>
+                <div class="auth-field">
+                    <label class="form-label" for="login-identifier">Email or username</label>
+                    <input id="login-identifier" name="identifier" class="input" type="text" autocomplete="username" placeholder="name@example.com or tahmeed">
+                    <p id="login-identifier-error" class="form-error" hidden></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="form-label" for="login-password">Password</label>
+                    <div class="auth-field__control">
+                        <input id="login-password" name="password" class="input" type="password" autocomplete="current-password" placeholder="Enter your password">
+                        <button type="button" class="auth-toggle" data-toggle-password="login-password">Show</button>
+                    </div>
+                    <p id="login-password-error" class="form-error" hidden></p>
+                </div>
+
+                <div class="auth-form__actions">
+                    <button type="submit" class="btn btn-primary btn-lg auth-submit">Sign In</button>
+                    <div class="auth-support">
+                        <span>Need an account?</span>
+                        <a href="/register.php">Create one now</a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="auth-footer">
+                Productivity Tracker keeps your daily logging, overview, and activity history scoped to your account.
+            </div>
+        </section>
     </div>
-</div>
+</main>
 
 <script>
 async function readJsonSafely(response) {
@@ -182,42 +89,103 @@ async function readJsonSafely(response) {
     }
 }
 
-function togglePass(id) {
-    const input = document.getElementById(id);
-    input.type = input.type === 'password' ? 'text' : 'password';
+function setFieldError(field, message) {
+    const error = document.getElementById(`${field.id}-error`);
+    field.classList.add('input-error');
+    field.setAttribute('aria-invalid', 'true');
+    if (error) {
+        error.textContent = message;
+        error.hidden = false;
+    }
+}
+
+function clearFieldError(field) {
+    const error = document.getElementById(`${field.id}-error`);
+    field.classList.remove('input-error');
+    field.removeAttribute('aria-invalid');
+    if (error) {
+        error.textContent = '';
+        error.hidden = true;
+    }
+}
+
+function showSummary(message) {
+    const errorBox = document.querySelector('#login-error');
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+}
+
+function clearSummary() {
+    const errorBox = document.querySelector('#login-error');
+    errorBox.textContent = '';
+    errorBox.hidden = true;
 }
 
 document.querySelector('#login-form').addEventListener('submit', async function (event) {
     event.preventDefault();
-    const errorBox = document.querySelector('#login-error');
-    const submitButton = event.currentTarget.querySelector('.btn-submit');
-    errorBox.textContent = '';
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    const identifierField = document.querySelector('#login-identifier');
+    const passwordField = document.querySelector('#login-password');
+    const identifier = identifierField.value.trim();
+    const password = passwordField.value;
 
-    const email = document.querySelector('[name="email"]').value.trim();
-    const password = document.querySelector('[name="password"]').value;
+    clearSummary();
+    clearFieldError(identifierField);
+    clearFieldError(passwordField);
+
+    let hasError = false;
+
+    if (identifier === '') {
+        setFieldError(identifierField, 'Email or username is required.');
+        hasError = true;
+    }
+
+    if (password === '') {
+        setFieldError(passwordField, 'Password is required.');
+        hasError = true;
+    }
+
+    if (hasError) {
+        showSummary('Fix the highlighted fields and try again.');
+        return;
+    }
 
     submitButton.disabled = true;
 
     try {
-        const response = await fetch('auth/login.php', {
+        const response = await fetch('/auth/login.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ identifier, password }),
         });
 
         const data = await readJsonSafely(response);
 
         if (!response.ok) {
-            errorBox.textContent = data?.error || 'Login failed. Please try again.';
+            showSummary(data?.error || 'Login failed. Please try again.');
             return;
         }
 
-        window.location.href = 'index.php';
+        window.location.href = '/';
     } catch (error) {
-        errorBox.textContent = 'Unable to sign in right now. Please try again.';
+        showSummary('Unable to sign in right now. Please try again.');
     } finally {
         submitButton.disabled = false;
     }
+});
+
+document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.togglePassword);
+
+        if (!input) {
+            return;
+        }
+
+        const nextType = input.type === 'password' ? 'text' : 'password';
+        input.type = nextType;
+        button.textContent = nextType === 'password' ? 'Show' : 'Hide';
+    });
 });
 </script>
 </body>
