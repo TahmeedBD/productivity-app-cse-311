@@ -6,6 +6,7 @@ services:
     ports:
       - '8888:8080'
     environment:
+      TZ: 'Asia/Dhaka'
       DEV_AUTO_LOGIN_ENABLED: '1'
       DEV_AUTO_LOGIN_EMAIL: 'dev@example.com'
       DEV_AUTO_LOGIN_USERNAME: 'Dev User'
@@ -26,7 +27,9 @@ services:
 
   db:
     image: mysql:8.0
+    command: --default-time-zone=+06:00
     environment:
+      TZ: 'Asia/Dhaka'
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: productivity_app
       MYSQL_USER: app_user

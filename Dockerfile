@@ -1,8 +1,13 @@
 FROM php:8.5-apache
 
+ENV TZ=Asia/Dhaka
+
 # Install system packages needed by PHP extensions used in tests
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends libonig-dev libsqlite3-dev libxml2-dev pkg-config \
+	&& apt-get install -y --no-install-recommends tzdata libonig-dev libsqlite3-dev libxml2-dev pkg-config \
+	&& ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime \
+	&& echo "$TZ" > /etc/timezone \
+	&& printf 'date.timezone=%s\n' "$TZ" > /usr/local/etc/php/conf.d/timezone.ini \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Install PDO, MySQL, SQLite, and common testing extensions
