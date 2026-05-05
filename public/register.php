@@ -1,3 +1,16 @@
+<?php
+require_once __DIR__ . '/../src/db.php';
+require_once __DIR__ . '/../src/auth/helpers.php';
+require_once __DIR__ . '/../src/auth/dev_login.php';
+
+start_session();
+apply_dev_auto_login($pdo);
+
+if (!empty($_SESSION['user_id'])) {
+    header('Location: /');
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -150,6 +163,20 @@ body {
 </div>
 
 <script>
+async function readJsonSafely(response) {
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!contentType.includes('application/json')) {
+        return null;
+    }
+
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
+}
+
 function togglePass(id) {
     const input = document.getElementById(id);
     input.type = input.type === 'password' ? 'text' : 'password';
@@ -158,6 +185,7 @@ function togglePass(id) {
 document.querySelector('#register-form').addEventListener('submit', async function (event) {
     event.preventDefault();
     const errorBox = document.querySelector('#register-error');
+    const submitButton = event.currentTarget.querySelector('.btn-submit');
     errorBox.textContent = '';
 
     const username = document.querySelector('[name="username"]').value.trim();
@@ -170,18 +198,28 @@ document.querySelector('#register-form').addEventListener('submit', async functi
         return;
     }
 
-    const response = await fetch('auth/register.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
-    });
+    submitButton.disabled = true;
 
-    const data = await response.json();
-    if (!response.ok) {
-        errorBox.textContent = data.error || 'Register failed.';
-        return;
+    try {
+        const response = await fetch('auth/register.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ username, email, password }),
+        });
+
+        const data = await readJsonSafely(response);
+
+        if (!response.ok) {
+            errorBox.textContent = data?.error || 'Register failed. Please try again.';
+            return;
+        }
+
+        window.location.href = 'login.php';
+    } catch (error) {
+        errorBox.textContent = 'Unable to create your account right now. Please try again.';
+    } finally {
+        submitButton.disabled = false;
     }
-    window.location.href = 'login.php';
 });
 </script>
 </body>

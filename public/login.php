@@ -1,3 +1,16 @@
+<?php
+require_once __DIR__ . '/../src/db.php';
+require_once __DIR__ . '/../src/auth/helpers.php';
+require_once __DIR__ . '/../src/auth/dev_login.php';
+
+start_session();
+apply_dev_auto_login($pdo);
+
+if (!empty($_SESSION['user_id'])) {
+    header('Location: /');
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -141,7 +154,6 @@ body {
         <div class="form-group">
             <label>
                 Password
-                <a href="#">Forgot password?</a>
             </label>
             <div class="input-wrapper">
                 <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
@@ -158,6 +170,20 @@ body {
 </div>
 
 <script>
+async function readJsonSafely(response) {
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!contentType.includes('application/json')) {
+        return null;
+    }
+
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
+}
+
 function togglePass(id) {
     const input = document.getElementById(id);
     input.type = input.type === 'password' ? 'text' : 'password';
@@ -166,23 +192,34 @@ function togglePass(id) {
 document.querySelector('#login-form').addEventListener('submit', async function (event) {
     event.preventDefault();
     const errorBox = document.querySelector('#login-error');
+    const submitButton = event.currentTarget.querySelector('.btn-submit');
     errorBox.textContent = '';
 
     const email = document.querySelector('[name="email"]').value.trim();
     const password = document.querySelector('[name="password"]').value;
 
-    const response = await fetch('auth/login.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ email, password }),
-    });
+    submitButton.disabled = true;
 
-    const data = await response.json();
-    if (!response.ok) {
-        errorBox.textContent = data.error || 'Login failed.';
-        return;
+    try {
+        const response = await fetch('auth/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+
+        const data = await readJsonSafely(response);
+
+        if (!response.ok) {
+            errorBox.textContent = data?.error || 'Login failed. Please try again.';
+            return;
+        }
+
+        window.location.href = 'index.php';
+    } catch (error) {
+        errorBox.textContent = 'Unable to sign in right now. Please try again.';
+    } finally {
+        submitButton.disabled = false;
     }
-    window.location.href = 'index.php';
 });
 </script>
 </body>

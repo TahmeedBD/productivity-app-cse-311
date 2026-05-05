@@ -56,32 +56,51 @@ if (!function_exists('asset_path')) {
             <a href="/" class="nav-logo">
                 ⏱ Productivity<span>Tracker</span>
             </a>
-            <ul class="nav-links" role="list">
-                <li><a href="/" <?= basename($_SERVER['PHP_SELF']) ===
-                'index.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Dashboard</a></li>
-                <li><a href="/reports.php" <?= basename(
-                    $_SERVER['PHP_SELF'],
-                ) === 'reports.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Overview</a></li>
-                <li><a href="/activities.php" <?= basename(
-                    $_SERVER['PHP_SELF'],
-                ) === 'activities.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Activities</a></li>
-                <li><a href="/time_logger.php" <?= basename(
-                    $_SERVER['PHP_SELF'],
-                ) === 'time_logger.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Time Log</a></li>
-                <li><a href="/settings.php" <?= basename(
-                    $_SERVER['PHP_SELF'],
-                ) === 'settings.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Settings</a></li>
-            </ul>
+            <div class="nav-actions">
+                <ul class="nav-links" role="list">
+                    <li><a href="/" <?= basename($_SERVER['PHP_SELF']) ===
+                    'index.php'
+                        ? 'class="active" aria-current="page"'
+                        : '' ?>>Dashboard</a></li>
+                    <li><a href="/reports.php" <?= basename(
+                        $_SERVER['PHP_SELF'],
+                    ) === 'reports.php'
+                        ? 'class="active" aria-current="page"'
+                        : '' ?>>Overview</a></li>
+                    <li><a href="/activities.php" <?= basename(
+                        $_SERVER['PHP_SELF'],
+                    ) === 'activities.php'
+                        ? 'class="active" aria-current="page"'
+                        : '' ?>>Activities</a></li>
+                    <li><a href="/time_logger.php" <?= basename(
+                        $_SERVER['PHP_SELF'],
+                    ) === 'time_logger.php'
+                        ? 'class="active" aria-current="page"'
+                        : '' ?>>Time Log</a></li>
+                    <li><a href="/settings.php" <?= basename(
+                        $_SERVER['PHP_SELF'],
+                    ) === 'settings.php'
+                        ? 'class="active" aria-current="page"'
+                        : '' ?>>Settings</a></li>
+                </ul>
+                <?php if (isset($currentUser)): ?>
+                    <div class="nav-session">
+                        <span class="nav-session__user"><?= htmlspecialchars(
+                            (string) ($currentUser['username'] ?? ''),
+                        ) ?></span>
+                        <button
+                            type="button"
+                            id="nav-logout-button"
+                            class="btn btn-ghost btn-sm"
+                            data-csrf-token="<?= htmlspecialchars(
+                                (string) ($_SESSION['csrf_token'] ?? ''),
+                            ) ?>"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </nav>
     <main class="container page-main" id="main-content">
