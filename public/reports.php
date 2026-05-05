@@ -68,6 +68,9 @@ require_once 'header.php';
             <section class="card reports-list-card">
                 <div class="reports-list-card__header">
                     <h2 class="text-h3">Timeline</h2>
+                    <button id="reports-sort-button" type="button" class="btn btn-ghost btn-sm reports-sort-button" aria-label="Show newest entries first" title="Show newest entries first">
+                        <span aria-hidden="true">↓</span>
+                    </button>
                     <span id="reports-entry-count" class="badge badge-neutral">0 entries</span>
                 </div>
                 <div id="reports-timeline-list" class="reports-timeline-list"></div>

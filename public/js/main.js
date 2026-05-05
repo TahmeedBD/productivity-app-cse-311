@@ -763,6 +763,8 @@ let reportSelectedDate = getRequestedReportDate();
 let reportActivitiesLoaded = false;
 let reportEditingEntryId = null;
 let currentReportEntries = [];
+let currentReportSegments = [];
+let reportsTimelineSortOrder = 'desc';
 function buildDateKey(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1114,6 +1116,18 @@ function buildReportRowStatus(segment) {
     }
     return `<button type="button" class="reports-row__edit" data-entry-id="${escapeHtml(String((_b = (_a = segment.entry) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : ''))}">Edit</button><span class="reports-row__status ${getEntryBadgeClass((_d = (_c = segment.entry) === null || _c === void 0 ? void 0 : _c.state) !== null && _d !== void 0 ? _d : 'completed')}">${escapeHtml(formatStateLabel((_f = (_e = segment.entry) === null || _e === void 0 ? void 0 : _e.state) !== null && _f !== void 0 ? _f : 'completed'))}</span>`;
 }
+function updateReportsSortButton() {
+    const sortButton = document.querySelector('#reports-sort-button');
+    if (!sortButton) {
+        return;
+    }
+    const isNewestFirst = reportsTimelineSortOrder === 'desc';
+    sortButton.innerHTML = `<span aria-hidden="true">${isNewestFirst ? '↓' : '↑'}</span>`;
+    sortButton.setAttribute('aria-label', isNewestFirst ? 'Show newest entries first' : 'Show oldest entries first');
+    sortButton.title = isNewestFirst
+        ? 'Show newest entries first'
+        : 'Show oldest entries first';
+}
 function renderReportsTimelineList(segments) {
     const container = document.querySelector('#reports-timeline-list');
     const countBadge = document.querySelector('#reports-entry-count');
@@ -1121,13 +1135,16 @@ function renderReportsTimelineList(segments) {
         return;
     }
     const entryCount = segments.filter((segment) => segment.kind === 'entry').length;
+    const sortedSegments = reportsTimelineSortOrder === 'desc' ? [...segments].reverse() : segments;
+    const visibleSegments = sortedSegments.filter((segment) => !(segment.kind === 'gap' && segment.isFuture));
+    updateReportsSortButton();
     countBadge.textContent = `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`;
-    if (segments.length === 0) {
+    if (visibleSegments.length === 0) {
         container.innerHTML =
             '<div class="reports-empty-state">No awake-window data available for this day.</div>';
         return;
     }
-    container.innerHTML = segments
+    container.innerHTML = visibleSegments
         .map((segment) => {
         var _a, _b, _c, _d, _e, _f;
         const title = segment.kind === 'gap'
@@ -1142,17 +1159,21 @@ function renderReportsTimelineList(segments) {
                 'Logged entry';
         return `
         <div class="reports-row ${segment.kind === 'gap' ? 'reports-row--gap' : ''} ${segment.isFuture ? 'reports-row--future' : ''}">
-          <span class="reports-row__marker ${segment.kind === 'gap' ? 'reports-row__marker--gap' : ''}" style="${segment.kind === 'gap' ? '' : `--row-color: ${segment.color}`} "></span>
           <div class="reports-row__time">${escapeHtml(formatDateTimeDisplay(segment.start))} - ${escapeHtml(formatDateTimeDisplay(segment.end))}</div>
           <div class="reports-row__details">
-            ${segment.kind === 'gap'
+            <span class="reports-row__marker ${segment.kind === 'gap' ? 'reports-row__marker--gap' : ''}" style="${segment.kind === 'gap' ? '' : `--row-color: ${segment.color}`} "></span>
+            <div class="reports-row__content">
+              <div class="reports-row__headline">
+                ${segment.kind === 'gap'
             ? `<span class="reports-row__title reports-row__title--gap">${escapeHtml(title)}</span>`
             : `<span class="reports-row__title">${escapeHtml(title)}</span>`}
-            <span class="reports-row__subtitle">${escapeHtml(subtitle)}</span>
+                <span class="reports-row__duration ${segment.kind === 'gap' ? 'reports-row__duration--gap' : ''}">${escapeHtml(formatHoursMinutes(segment.durationMs))}</span>
+              </div>
+              <span class="reports-row__subtitle">${escapeHtml(subtitle)}</span>
+            </div>
           </div>
           <div class="reports-row__actions">
-            <span class="reports-row__duration ${segment.kind === 'gap' ? 'reports-row__duration--gap' : ''}">${escapeHtml(formatHoursMinutes(segment.durationMs))}</span>
-            ${buildReportRowStatus(segment)}
+            <div class="reports-row__action-group">${buildReportRowStatus(segment)}</div>
           </div>
         </div>
       `;
@@ -1228,6 +1249,7 @@ function refreshReportsPage() {
         currentReportEntries = reportEntries;
         const summaries = summarizeActivities(reportEntries, reportSelectedDate, dailyLogResponse.daily_log);
         const segments = buildTimelineSegments(reportSelectedDate, dailyLogResponse.daily_log, reportEntries);
+        currentReportSegments = segments;
         const dateLabel = document.querySelector('#reports-date-label');
         const dateInput = document.querySelector('#reports-date-input');
         const nextButton = document.querySelector('#reports-next-day');
@@ -1256,6 +1278,7 @@ function bindReportsPage() {
     const todayButton = document.querySelector('#reports-today-button');
     const dateInput = document.querySelector('#reports-date-input');
     const addButton = document.querySelector('#reports-add-entry-button');
+    const sortButton = document.querySelector('#reports-sort-button');
     const deleteButton = document.querySelector('#reports-entry-delete');
     const modal = document.querySelector('#reports-entry-modal');
     const closeButton = document.querySelector('#reports-entry-modal-close');
@@ -1315,6 +1338,11 @@ function bindReportsPage() {
             setReportsMessage(error instanceof Error ? error.message : 'Unable to load activities.');
         }
     }));
+    sortButton === null || sortButton === void 0 ? void 0 : sortButton.addEventListener('click', () => {
+        reportsTimelineSortOrder =
+            reportsTimelineSortOrder === 'desc' ? 'asc' : 'desc';
+        renderReportsTimelineList(currentReportSegments);
+    });
     closeButton === null || closeButton === void 0 ? void 0 : closeButton.addEventListener('click', closeReportsEntryModal);
     modal === null || modal === void 0 ? void 0 : modal.addEventListener('click', (event) => {
         const target = event.target;

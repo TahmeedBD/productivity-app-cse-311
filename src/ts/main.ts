@@ -1217,6 +1217,8 @@ let reportSelectedDate = getRequestedReportDate();
 let reportActivitiesLoaded = false;
 let reportEditingEntryId: number | null = null;
 let currentReportEntries: TimeEntry[] = [];
+let currentReportSegments: TimelineSegment[] = [];
+let reportsTimelineSortOrder: 'desc' | 'asc' = 'desc';
 
 function buildDateKey(date: Date): string {
   const year = date.getFullYear();
@@ -1722,6 +1724,26 @@ function buildReportRowStatus(segment: TimelineSegment): string {
   return `<button type="button" class="reports-row__edit" data-entry-id="${escapeHtml(String(segment.entry?.id ?? ''))}">Edit</button><span class="reports-row__status ${getEntryBadgeClass(segment.entry?.state ?? 'completed')}">${escapeHtml(formatStateLabel(segment.entry?.state ?? 'completed'))}</span>`;
 }
 
+function updateReportsSortButton(): void {
+  const sortButton = document.querySelector<HTMLButtonElement>(
+    '#reports-sort-button',
+  );
+
+  if (!sortButton) {
+    return;
+  }
+
+  const isNewestFirst = reportsTimelineSortOrder === 'desc';
+  sortButton.innerHTML = `<span aria-hidden="true">${isNewestFirst ? '↓' : '↑'}</span>`;
+  sortButton.setAttribute(
+    'aria-label',
+    isNewestFirst ? 'Show newest entries first' : 'Show oldest entries first',
+  );
+  sortButton.title = isNewestFirst
+    ? 'Show newest entries first'
+    : 'Show oldest entries first';
+}
+
 function renderReportsTimelineList(segments: TimelineSegment[]): void {
   const container = document.querySelector<HTMLElement>(
     '#reports-timeline-list',
@@ -1737,15 +1759,22 @@ function renderReportsTimelineList(segments: TimelineSegment[]): void {
   const entryCount = segments.filter(
     (segment) => segment.kind === 'entry',
   ).length;
+  const sortedSegments =
+    reportsTimelineSortOrder === 'desc' ? [...segments].reverse() : segments;
+  const visibleSegments = sortedSegments.filter(
+    (segment) => !(segment.kind === 'gap' && segment.isFuture),
+  );
+
+  updateReportsSortButton();
   countBadge.textContent = `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`;
 
-  if (segments.length === 0) {
+  if (visibleSegments.length === 0) {
     container.innerHTML =
       '<div class="reports-empty-state">No awake-window data available for this day.</div>';
     return;
   }
 
-  container.innerHTML = segments
+  container.innerHTML = visibleSegments
     .map((segment) => {
       const title =
         segment.kind === 'gap'
@@ -1762,19 +1791,23 @@ function renderReportsTimelineList(segments: TimelineSegment[]): void {
 
       return `
         <div class="reports-row ${segment.kind === 'gap' ? 'reports-row--gap' : ''} ${segment.isFuture ? 'reports-row--future' : ''}">
-          <span class="reports-row__marker ${segment.kind === 'gap' ? 'reports-row__marker--gap' : ''}" style="${segment.kind === 'gap' ? '' : `--row-color: ${segment.color}`} "></span>
           <div class="reports-row__time">${escapeHtml(formatDateTimeDisplay(segment.start))} - ${escapeHtml(formatDateTimeDisplay(segment.end))}</div>
           <div class="reports-row__details">
-            ${
-              segment.kind === 'gap'
-                ? `<span class="reports-row__title reports-row__title--gap">${escapeHtml(title)}</span>`
-                : `<span class="reports-row__title">${escapeHtml(title)}</span>`
-            }
-            <span class="reports-row__subtitle">${escapeHtml(subtitle)}</span>
+            <span class="reports-row__marker ${segment.kind === 'gap' ? 'reports-row__marker--gap' : ''}" style="${segment.kind === 'gap' ? '' : `--row-color: ${segment.color}`} "></span>
+            <div class="reports-row__content">
+              <div class="reports-row__headline">
+                ${
+                  segment.kind === 'gap'
+                    ? `<span class="reports-row__title reports-row__title--gap">${escapeHtml(title)}</span>`
+                    : `<span class="reports-row__title">${escapeHtml(title)}</span>`
+                }
+                <span class="reports-row__duration ${segment.kind === 'gap' ? 'reports-row__duration--gap' : ''}">${escapeHtml(formatHoursMinutes(segment.durationMs))}</span>
+              </div>
+              <span class="reports-row__subtitle">${escapeHtml(subtitle)}</span>
+            </div>
           </div>
           <div class="reports-row__actions">
-            <span class="reports-row__duration ${segment.kind === 'gap' ? 'reports-row__duration--gap' : ''}">${escapeHtml(formatHoursMinutes(segment.durationMs))}</span>
-            ${buildReportRowStatus(segment)}
+            <div class="reports-row__action-group">${buildReportRowStatus(segment)}</div>
           </div>
         </div>
       `;
@@ -1903,6 +1936,7 @@ async function refreshReportsPage(): Promise<void> {
     dailyLogResponse.daily_log,
     reportEntries,
   );
+  currentReportSegments = segments;
   const dateLabel = document.querySelector<HTMLElement>('#reports-date-label');
   const dateInput = document.querySelector<HTMLInputElement>(
     '#reports-date-input',
@@ -1950,6 +1984,9 @@ function bindReportsPage(): void {
   );
   const addButton = document.querySelector<HTMLButtonElement>(
     '#reports-add-entry-button',
+  );
+  const sortButton = document.querySelector<HTMLButtonElement>(
+    '#reports-sort-button',
   );
   const deleteButton = document.querySelector<HTMLButtonElement>(
     '#reports-entry-delete',
@@ -2048,6 +2085,12 @@ function bindReportsPage(): void {
         error instanceof Error ? error.message : 'Unable to load activities.',
       );
     }
+  });
+
+  sortButton?.addEventListener('click', () => {
+    reportsTimelineSortOrder =
+      reportsTimelineSortOrder === 'desc' ? 'asc' : 'desc';
+    renderReportsTimelineList(currentReportSegments);
   });
 
   closeButton?.addEventListener('click', closeReportsEntryModal);
