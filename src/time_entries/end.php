@@ -71,6 +71,8 @@ function end_time_entry(
         throw new \RuntimeException('Failed to reload the ended entry.');
     }
 
+    mark_matching_checklist_item_complete_from_entry($pdo, $userId, $updated);
+
     return $updated;
 }
 

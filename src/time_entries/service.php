@@ -5,6 +5,7 @@ require_once __DIR__ . '/../daily_logs/helpers.php';
 require_once __DIR__ . '/../daily_logs/service.php';
 require_once __DIR__ . '/../activities/service.php';
 require_once __DIR__ . '/../activity_subtypes/service.php';
+require_once __DIR__ . '/../daily_completions/service.php';
 
 function is_entry_start_within_awake_window(
     string $startTime,
@@ -388,6 +389,19 @@ function start_time_entry(
                     ':state' => 'completed',
                     ':id' => $latestEntry['id'],
                 ]);
+
+                $completedEntry = find_time_entry_by_id(
+                    $pdo,
+                    (int) $latestEntry['id'],
+                );
+
+                if ($completedEntry !== null) {
+                    mark_matching_checklist_item_complete_from_entry(
+                        $pdo,
+                        $userId,
+                        $completedEntry,
+                    );
+                }
             } else {
                 $latestEndTime = extract_time_component(
                     (string) $latestEntry['end'],
