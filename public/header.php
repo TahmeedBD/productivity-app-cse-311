@@ -1,4 +1,33 @@
-<?php require_once __DIR__ . '/../src/db.php'; ?>
+<?php
+require_once __DIR__ . '/../src/db.php';
+
+if (!function_exists('asset_version')) {
+    function asset_version(string $publicPath): string
+    {
+        static $cache = [];
+
+        if (isset($cache[$publicPath])) {
+            return $cache[$publicPath];
+        }
+
+        $normalizedPath = ltrim($publicPath, '/');
+        $absolutePath = __DIR__ . '/' . $normalizedPath;
+
+        $cache[$publicPath] = is_file($absolutePath)
+            ? (string) filemtime($absolutePath)
+            : '1';
+
+        return $cache[$publicPath];
+    }
+}
+
+if (!function_exists('asset_path')) {
+    function asset_path(string $publicPath): string
+    {
+        return $publicPath . '?v=' . rawurlencode(asset_version($publicPath));
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,11 +39,13 @@
         : 'Productivity Tracker' ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="/css/style.css?v=<?= ASSET_VERSION ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(
+        asset_path('/css/style.css'),
+    ) ?>">
     <?php if (isset($pageCSS)): ?>
-        <link rel="stylesheet" href="/css/<?= htmlspecialchars(
-            $pageCSS,
-        ) ?>?v=<?= ASSET_VERSION ?>">
+        <link rel="stylesheet" href="<?= htmlspecialchars(
+            asset_path('/css/' . (string) $pageCSS),
+        ) ?>">
     <?php endif; ?>
 </head>
 <body<?= isset($bodyClass)

@@ -1,4 +1,4 @@
     </main><!-- /#main-content -->
-    <script src="/js/main.js?v=<?= ASSET_VERSION ?>"></script>
+    <script src="<?= htmlspecialchars(asset_path('/js/main.js')) ?>"></script>
 </body>
 </html>
