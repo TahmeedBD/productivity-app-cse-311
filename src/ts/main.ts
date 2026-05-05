@@ -284,6 +284,16 @@ function parseSelectedId(select: HTMLSelectElement | null): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function getSelectedOptionLabel(
+  select: HTMLSelectElement | null,
+): string | null {
+  if (!select || !select.value) {
+    return null;
+  }
+
+  return select.selectedOptions[0]?.textContent?.trim() || null;
+}
+
 function normalizeTimeForApi(value: string): string {
   const trimmed = value.trim();
 
@@ -655,6 +665,56 @@ function syncCurrentEntryControls(): void {
   if (editNotesButton) {
     editNotesButton.disabled = !hasRunningEntry;
   }
+
+  renderCurrentEntrySummary();
+}
+
+function renderCurrentEntrySummary(): void {
+  const cardElement = document.querySelector<HTMLElement>(
+    '#current-entry-card',
+  );
+  const activityElement = document.querySelector<HTMLElement>(
+    '#current-entry-activity',
+  );
+  const subtypeElement = document.querySelector<HTMLElement>(
+    '#current-entry-subtype',
+  );
+  const activityField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-activity',
+  );
+  const subtypeField = document.querySelector<HTMLSelectElement>(
+    '#time-entry-subtype',
+  );
+
+  if (!cardElement || !activityElement || !subtypeElement) {
+    return;
+  }
+
+  if (!currentRunningEntry) {
+    cardElement.hidden = true;
+    subtypeElement.hidden = true;
+    return;
+  }
+
+  const activityLabel =
+    getSelectedOptionLabel(activityField) ??
+    currentRunningEntry.activity_name?.trim() ??
+    '';
+  const subtypeLabel =
+    getSelectedOptionLabel(subtypeField) ??
+    currentRunningEntry.activity_subtype_name?.trim() ??
+    '';
+
+  if (!activityLabel) {
+    cardElement.hidden = true;
+    subtypeElement.hidden = true;
+    return;
+  }
+
+  cardElement.hidden = false;
+  activityElement.textContent = activityLabel;
+  subtypeElement.hidden = !subtypeLabel;
+  subtypeElement.textContent = subtypeLabel;
 }
 
 async function renderCurrentEntry(entries: TimeEntry[]): Promise<void> {
@@ -677,7 +737,6 @@ async function renderCurrentEntry(entries: TimeEntry[]): Promise<void> {
 
   if (!runningEntry) {
     setElementText('#current-entry-duration', '00:00:00');
-    setElementText('#current-entry-start', 'No entry is running right now.');
     setSelectValue(activityField, null);
     await loadSubtypeOptionsForSelect(
       subtypeField,
@@ -720,12 +779,6 @@ async function renderCurrentEntry(entries: TimeEntry[]): Promise<void> {
 
   renderDuration();
   runningEntryTimerId = window.setInterval(renderDuration, 1000);
-  setElementText(
-    '#current-entry-start',
-    runningEntry.notes?.trim()
-      ? `Started at ${formatClockTime(runningEntry.start)} - ${runningEntry.notes.trim()}`
-      : `Started at ${formatClockTime(runningEntry.start)}`,
-  );
   renderCurrentEntryState('Running', true);
   syncCurrentEntryControls();
 }

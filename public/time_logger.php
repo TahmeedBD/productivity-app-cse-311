@@ -23,6 +23,11 @@ require_once 'header.php';
                     <span class="time-log-running-dot" aria-hidden="true"></span>
                     <span class="time-log-running-label">Idle</span>
                 </span>
+                <div id="current-entry-card" class="time-log-current-entry-card" aria-live="polite" hidden>
+                    <span class="time-log-current-entry-label">Current Focus</span>
+                    <strong id="current-entry-activity" class="time-log-current-entry-activity">Nothing running</strong>
+                    <span id="current-entry-subtype" class="time-log-current-entry-subtype" hidden></span>
+                </div>
             </div>
 
             <div class="time-log-hero-right">

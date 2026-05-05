@@ -161,6 +161,13 @@ function parseSelectedId(select) {
     const parsed = Number(select.value);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
+function getSelectedOptionLabel(select) {
+    var _a, _b;
+    if (!select || !select.value) {
+        return null;
+    }
+    return ((_b = (_a = select.selectedOptions[0]) === null || _a === void 0 ? void 0 : _a.textContent) === null || _b === void 0 ? void 0 : _b.trim()) || null;
+}
 function normalizeTimeForApi(value) {
     const trimmed = value.trim();
     if (!trimmed) {
@@ -188,7 +195,7 @@ function getClientTodayDateKey() {
 }
 function buildTimeLogRequestDate() {
     var _a, _b, _c;
-    return (_c = (_b = extractDateKeyFromTimestamp((_a = currentRunningEntry === null || currentRunningEntry === void 0 ? void 0 : currentRunningEntry.start) !== null && _a !== void 0 ? _a : null)) !== null && _b !== void 0 ? _b : timeLogActiveDate) !== null && _c !== void 0 ? _c : getClientTodayDateKey();
+    return ((_c = (_b = extractDateKeyFromTimestamp((_a = currentRunningEntry === null || currentRunningEntry === void 0 ? void 0 : currentRunningEntry.start) !== null && _a !== void 0 ? _a : null)) !== null && _b !== void 0 ? _b : timeLogActiveDate) !== null && _c !== void 0 ? _c : getClientTodayDateKey());
 }
 function updatePlaceholderSelectionState(select) {
     if (!select) {
@@ -393,10 +400,37 @@ function syncCurrentEntryControls() {
     if (editNotesButton) {
         editNotesButton.disabled = !hasRunningEntry;
     }
+    renderCurrentEntrySummary();
+}
+function renderCurrentEntrySummary() {
+    var _a, _b, _c, _d, _e, _f;
+    const cardElement = document.querySelector('#current-entry-card');
+    const activityElement = document.querySelector('#current-entry-activity');
+    const subtypeElement = document.querySelector('#current-entry-subtype');
+    const activityField = document.querySelector('#time-entry-activity');
+    const subtypeField = document.querySelector('#time-entry-subtype');
+    if (!cardElement || !activityElement || !subtypeElement) {
+        return;
+    }
+    if (!currentRunningEntry) {
+        cardElement.hidden = true;
+        subtypeElement.hidden = true;
+        return;
+    }
+    const activityLabel = (_c = (_a = getSelectedOptionLabel(activityField)) !== null && _a !== void 0 ? _a : (_b = currentRunningEntry.activity_name) === null || _b === void 0 ? void 0 : _b.trim()) !== null && _c !== void 0 ? _c : '';
+    const subtypeLabel = (_f = (_d = getSelectedOptionLabel(subtypeField)) !== null && _d !== void 0 ? _d : (_e = currentRunningEntry.activity_subtype_name) === null || _e === void 0 ? void 0 : _e.trim()) !== null && _f !== void 0 ? _f : '';
+    if (!activityLabel) {
+        cardElement.hidden = true;
+        subtypeElement.hidden = true;
+        return;
+    }
+    cardElement.hidden = false;
+    activityElement.textContent = activityLabel;
+    subtypeElement.hidden = !subtypeLabel;
+    subtypeElement.textContent = subtypeLabel;
 }
 function renderCurrentEntry(entries) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a;
         const runningEntry = getRunningEntry(entries);
         const activityField = document.querySelector('#time-entry-activity');
         const subtypeField = document.querySelector('#time-entry-subtype');
@@ -408,7 +442,6 @@ function renderCurrentEntry(entries) {
         stopRunningEntryTimer();
         if (!runningEntry) {
             setElementText('#current-entry-duration', '00:00:00');
-            setElementText('#current-entry-start', 'No entry is running right now.');
             setSelectValue(activityField, null);
             yield loadSubtypeOptionsForSelect(subtypeField, null, null, 'Select activity first', 'No subtypes yet', 'Start an entry first');
             if (notesField) {
@@ -429,9 +462,6 @@ function renderCurrentEntry(entries) {
         }
         renderDuration();
         runningEntryTimerId = window.setInterval(renderDuration, 1000);
-        setElementText('#current-entry-start', ((_a = runningEntry.notes) === null || _a === void 0 ? void 0 : _a.trim())
-            ? `Started at ${formatClockTime(runningEntry.start)} - ${runningEntry.notes.trim()}`
-            : `Started at ${formatClockTime(runningEntry.start)}`);
         renderCurrentEntryState('Running', true);
         syncCurrentEntryControls();
     });
