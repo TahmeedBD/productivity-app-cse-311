@@ -120,7 +120,7 @@ The application is built using a procedural PHP structure.
 
 ### Hot Reload Behavior
 
-- **PHP/HTML/CSS/JS:** Changes under mounted volumes are reflected on browser refresh (hard refresh if the browser caches `main.js` aggressively).
+- **PHP/HTML/CSS/JS:** Changes under mounted volumes are reflected on browser refresh (hard refresh if the browser caches the split `/js/app/*.js` assets aggressively).
 
 ### Backend Tests
 

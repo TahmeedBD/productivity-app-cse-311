@@ -47,7 +47,7 @@ docker compose exec -T -w /var/www web php scripts/seed_dummy_data.php qa.report
 ## Asset Delivery Checks
 
 - [ ] In Chrome Network, reload `/reports.php`. Expected: `/css/style.css?v=...` is requested with a version string.
-- [ ] In Chrome Network, reload `/reports.php`. Expected: `/js/main.js?v=...` is requested with a version string.
+- [ ] In Chrome Network, reload `/reports.php`. Expected: the split `/js/app/*.js?v=...` assets are requested with version strings.
 - [ ] In Chrome Network, confirm `style.css` imports `tokens.css`, `base.css`, and `components.css` successfully with no missing-file errors.
 - [ ] Confirm there is no stale-style behavior after refresh when switching between pages and returning to `Overview`.
 

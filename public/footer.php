@@ -1,5 +1,19 @@
     </main><!-- /#main-content -->
-    <script src="<?= htmlspecialchars(asset_path('/js/main.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(
+        asset_path('/js/app/shared.js'),
+    ) ?>"></script>
+    <script src="<?= htmlspecialchars(
+        asset_path('/js/app/time-log.js'),
+    ) ?>"></script>
+    <script src="<?= htmlspecialchars(
+        asset_path('/js/app/reports.js'),
+    ) ?>"></script>
+    <script src="<?= htmlspecialchars(
+        asset_path('/js/app/reports-dashboard.js'),
+    ) ?>"></script>
+    <script src="<?= htmlspecialchars(
+        asset_path('/js/app/dashboard.js'),
+    ) ?>"></script>
     <?php if (isset($currentUser)): ?>
         <script>
         document.querySelector('#nav-logout-button')?.addEventListener('click', async (event) => {
