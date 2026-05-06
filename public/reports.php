@@ -10,7 +10,7 @@ require_once 'header.php';
 <div id="reports-overview" class="reports-page">
     <div id="reports-message" class="alert alert-danger" hidden></div>
 
-    <section class="reports-toolbar card-featured">
+    <section class="reports-toolbar card card-featured">
         <div class="reports-toolbar__heading">
             <h1 class="text-h1">Day Overview</h1>
         </div>

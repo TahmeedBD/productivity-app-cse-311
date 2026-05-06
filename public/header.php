@@ -63,6 +63,11 @@ if (!function_exists('asset_path')) {
                 'index.php'
                     ? 'class="active" aria-current="page"'
                     : '' ?>>Dashboard</a></li>
+                <li><a href="/time_logger.php" <?= basename(
+                    $_SERVER['PHP_SELF'],
+                ) === 'time_logger.php'
+                    ? 'class="active" aria-current="page"'
+                    : '' ?>>Time Log</a></li>
                 <li><a href="/reports.php" <?= basename(
                     $_SERVER['PHP_SELF'],
                 ) === 'reports.php'
@@ -73,16 +78,11 @@ if (!function_exists('asset_path')) {
                 ) === 'activities.php'
                     ? 'class="active" aria-current="page"'
                     : '' ?>>Activities</a></li>
-                <li><a href="/time_logger.php" <?= basename(
+                <li><a href="/reports_dashboard.php" <?= basename(
                     $_SERVER['PHP_SELF'],
-                ) === 'time_logger.php'
+                ) === 'reports_dashboard.php'
                     ? 'class="active" aria-current="page"'
-                    : '' ?>>Time Log</a></li>
-                <li><a href="/settings.php" <?= basename(
-                    $_SERVER['PHP_SELF'],
-                ) === 'settings.php'
-                    ? 'class="active" aria-current="page"'
-                    : '' ?>>Settings</a></li>
+                    : '' ?>>Reports</a></li>
             </ul>
             <div class="nav-account">
                 <?php if (isset($currentUser)): ?>

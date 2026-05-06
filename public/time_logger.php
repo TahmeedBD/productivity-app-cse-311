@@ -15,7 +15,7 @@ require_once 'header.php';
         <p class="text-muted">Track and manage your daily activities.</p>
     </header>
 
-    <section id="time-log-hero" class="time-log-hero card-featured">
+    <section id="time-log-hero" class="time-log-hero card card-featured">
         <div class="time-log-hero-body">
             <div class="time-log-timer-panel">
                 <div id="current-entry-duration" class="time-log-timer">00:00:00</div>
