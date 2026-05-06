@@ -35,13 +35,13 @@ require_once 'header.php';
                     <div class="time-log-form-grid">
                         <div class="form-group">
                             <label class="form-label" for="time-entry-activity">Activity</label>
-                            <select id="time-entry-activity" class="select time-log-select" disabled aria-disabled="true" title="Coming soon">
+                            <select id="time-entry-activity" class="select time-log-select" disabled aria-disabled="true">
                                 <option value="">Select…</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="time-entry-subtype">Subtype</label>
-                            <select id="time-entry-subtype" class="select time-log-select" disabled aria-disabled="true" title="Coming soon">
+                            <select id="time-entry-subtype" class="select time-log-select" disabled aria-disabled="true">
                                 <option value="">Select…</option>
                             </select>
                         </div>
