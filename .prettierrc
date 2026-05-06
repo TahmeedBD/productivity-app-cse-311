@@ -7,15 +7,7 @@
     "singleQuote": true,
     "overrides": [
         {
-            "files": [
-                "*.html",
-                "*.css",
-                "*.ts",
-                "*.json",
-                "*.yml",
-                "*.yaml",
-                "*.md"
-            ],
+            "files": ["*.html", "*.css", "*.json", "*.yml", "*.yaml", "*.md"],
             "options": {
                 "tabWidth": 2
             }

@@ -13,10 +13,9 @@ This checklist is based on the current git diff for the Overview / Day Overview 
 
 ## Recommended Test Setup
 
-1. Start the app in Docker and make sure the latest TypeScript is compiled.
+1. Start the app in Docker with a fresh build so assets match the working tree.
 
 ```bash
-npm run build
 docker compose up -d --build
 ```
 

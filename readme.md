@@ -10,7 +10,7 @@ As per the project requirements, this application is built exclusively using:
 
 - **PHP** (Backend logic and database connection)
 - **HTML + CSS** (Markup and styling, vanilla only)
-- **TypeScript** (Compiled to Vanilla JS for frontend interactivity)
+- **JavaScript** (Vanilla JS in `public/js/` for frontend interactivity; no transpilation)
 - **MySQL / Docker** (Database and local development environment)
 
 **Note:** No external frameworks or libraries (like React, Tailwind, Bootstrap, jQuery, etc.) are used in this project.
@@ -120,8 +120,7 @@ The application is built using a procedural PHP structure.
 
 ### Hot Reload Behavior
 
-- **PHP/HTML/CSS:** Changes are reflected instantly upon browser refresh (mounted as live volumes).
-- **TypeScript:** Requires compilation. Run `npm run build` or `npm run watch` to auto-compile on save.
+- **PHP/HTML/CSS/JS:** Changes under mounted volumes are reflected on browser refresh (hard refresh if the browser caches `main.js` aggressively).
 
 ### Backend Tests
 

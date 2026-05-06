@@ -1,17 +1,14 @@
 {
   "name": "productivity-app",
   "version": "1.0.0",
-  "description": "Productivity app with PHP and TypeScript",
+  "description": "Productivity app with PHP and vanilla JavaScript",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
     "format": "prettier --write .",
     "test:backend": "php vendor/bin/phpunit --configuration phpunit.xml",
     "test:backend:docker": "docker compose run --rm composer install && docker compose run --rm web php /var/www/vendor/bin/phpunit --configuration /var/www/phpunit.xml"
   },
   "devDependencies": {
     "@prettier/plugin-php": "^0.25.0",
-    "prettier": "^3.8.3",
-    "typescript": "latest"
+    "prettier": "^3.8.3"
   }
 }
