@@ -7,13 +7,13 @@
  *
  * Constraints for the past 5 days:
  * - Awake window: 07:30 AM to 11:30 PM.
- * - First 30 mins: Always 'routine' activity ("Morning plan + habits").
+ * - First 30 mins: Always 'Morning routine' activity ("Morning plan + habits"); no subtype.
  * - Timing: All activities start/stop on :00, :30, or sometimes :15.
  * - Gaps: Very few (1 or 2 per day, ~30 min or ~2 hour).
  * - Blocks: Much longer.
  *
- * Activities match personal tags: chess, code, coding, guitar, music, piano,
- * routine, singing, study, research, valorant, workout.
+ * Activities match personal tags (stored Title Case): Chess, Code, Coding,
+ * Guitar, Music, Piano, Morning routine, Singing, Study, Research, Valorant, Workout.
  *
  * Usage:
  *   php scripts/seed_dummy_data.php <email>
@@ -181,18 +181,18 @@ function wipe_user_productivity_data(PDO $pdo, string $userId): void
 function seed_activities(PDO $pdo, string $userId): array
 {
     $tree = [
-        'chess' => ['Blitz', 'Puzzles', 'Opening prep'],
-        'code' => ['Features', 'Refactor', 'Bugfix'],
-        'coding' => ['Deep work', 'Katas', 'Tutorials'],
-        'guitar' => ['Scales', 'Song practice'],
-        'music' => ['Listening', 'Theory'],
-        'piano' => ['Repertoire', 'Technique'],
-        'routine' => ['Daily'],
-        'singing' => ['Warm-up', 'Repertoire'],
-        'study' => ['Coursework', 'Exam prep'],
-        'research' => ['Literature review', 'Lab notes'],
-        'valorant' => ['Competitive', 'Deathmatch', 'VOD review'],
-        'workout' => ['Strength', 'Cardio', 'Mobility'],
+        'Chess' => ['Blitz', 'Puzzles', 'Opening prep'],
+        'Code' => ['Features', 'Refactor', 'Bugfix'],
+        'Coding' => ['Deep work', 'Katas', 'Tutorials'],
+        'Guitar' => ['Scales', 'Song practice'],
+        'Music' => ['Listening', 'Theory'],
+        'Piano' => ['Repertoire', 'Technique'],
+        'Morning routine' => [],
+        'Singing' => ['Warm-up', 'Repertoire'],
+        'Study' => ['Coursework', 'Exam prep'],
+        'Research' => ['Literature review', 'Lab notes'],
+        'Valorant' => ['Competitive', 'Deathmatch', 'VOD review'],
+        'Workout' => ['Strength', 'Cardio', 'Mobility'],
     ];
 
     $activityIds = [];
@@ -227,26 +227,26 @@ function seed_checklist_items(
 ): array {
     $defs = [
         'routine' => [
-            'activity' => 'routine',
-            'subtype' => 'Daily',
+            'activity' => 'Morning routine',
+            'subtype' => null,
             'min' => 15,
         ],
         'study' => [
-            'activity' => 'study',
+            'activity' => 'Study',
             'subtype' => 'Coursework',
             'min' => 30,
         ],
         'research' => [
-            'activity' => 'research',
+            'activity' => 'Research',
             'subtype' => 'Literature review',
             'min' => 25,
         ],
         'workout' => [
-            'activity' => 'workout',
+            'activity' => 'Workout',
             'subtype' => 'Strength',
             'min' => 35,
         ],
-        'chess' => ['activity' => 'chess', 'subtype' => 'Blitz', 'min' => 20],
+        'chess' => ['activity' => 'Chess', 'subtype' => 'Blitz', 'min' => 20],
     ];
 
     $hasSubtypeCol =
@@ -267,11 +267,14 @@ function seed_checklist_items(
     $checklistIds = [];
     foreach ($defs as $key => $cfg) {
         $actName = $cfg['activity'];
-        $subName = $cfg['subtype'];
+        $subName = $cfg['subtype'] ?? null;
         $aid = $activityIds[$actName];
         $params = [':uid' => $userId, ':aid' => $aid, ':min' => $cfg['min']];
         if ($hasSubtypeCol) {
-            $params[':sid'] = $subtypeIds[$actName . '|' . $subName];
+            $params[':sid'] =
+                $subName !== null
+                    ? $subtypeIds[$actName . '|' . $subName]
+                    : null;
         }
         $stmt->execute($params);
         $checklistIds[$key] = (int) $pdo->lastInsertId();
@@ -406,10 +409,10 @@ function build_recent_day_slots(
     $slots = [];
     $cursor = $wakeMin;
 
-    // First 30 mins: routine
+    // First 30 mins: Morning routine (no subtype)
     $slots[] = [
-        'activity_id' => $activityIds['routine'],
-        'subtype_id' => $subtypeIds['routine|Daily'],
+        'activity_id' => $activityIds['Morning routine'],
+        'subtype_id' => null,
         'start' => combine($dateStr, minutes_to_time($cursor)),
         'end' => combine($dateStr, minutes_to_time($cursor + 30)),
         'notes' => 'Morning plan + habits',
@@ -424,28 +427,28 @@ function build_recent_day_slots(
 
     $pool = [
         [
-            'act' => 'code',
+            'act' => 'Code',
             'sub' => 'Features',
             'note' => 'Large feature implementation',
         ],
         [
-            'act' => 'coding',
+            'act' => 'Coding',
             'sub' => 'Deep work',
             'note' => 'Complex problem solving',
         ],
         [
-            'act' => 'study',
+            'act' => 'Study',
             'sub' => 'Coursework',
             'note' => 'Intensive study session',
         ],
         [
-            'act' => 'research',
+            'act' => 'Research',
             'sub' => 'Literature review',
             'note' => 'Deep research',
         ],
-        ['act' => 'workout', 'sub' => 'Strength', 'note' => 'Heavy lifting'],
-        ['act' => 'chess', 'sub' => 'Opening prep', 'note' => 'Theory study'],
-        ['act' => 'piano', 'sub' => 'Repertoire', 'note' => 'Bach practice'],
+        ['act' => 'Workout', 'sub' => 'Strength', 'note' => 'Heavy lifting'],
+        ['act' => 'Chess', 'sub' => 'Opening prep', 'note' => 'Theory study'],
+        ['act' => 'Piano', 'sub' => 'Repertoire', 'note' => 'Bach practice'],
     ];
 
     // Simple deterministic shuffle
@@ -545,18 +548,19 @@ function build_old_day_slots(
         if ($cursor + $dur > $dayEndMin) {
             return;
         }
+        $sid = $sub === null ? null : $subtypeIds[$act . '|' . $sub];
         $slots[] = [
             'activity_id' => $activityIds[$act],
-            'subtype_id' => $subtypeIds[$act . '|' . $sub],
+            'subtype_id' => $sid,
             'start' => combine($dateStr, minutes_to_time($cursor)),
             'end' => combine($dateStr, minutes_to_time($cursor + $dur)),
             'notes' => $note,
         ];
         $cursor += $dur + 10;
     };
-    $add(30, 'routine', 'Daily', 'Morning');
-    $add(60, 'code', 'Features', 'Work');
-    $add(45, 'workout', 'Cardio', 'Gym');
+    $add(30, 'Morning routine', null, 'Morning');
+    $add(60, 'Code', 'Features', 'Work');
+    $add(45, 'Workout', 'Cardio', 'Gym');
     return $slots;
 }
 
