@@ -91,6 +91,69 @@ final class DailyLogServiceTest extends TestCase
         $this->assertSame(2, $this->countDailyLogs());
     }
 
+    public function testCreatesMissingDailyLogUsingMostRecentPreviousTimes(): void
+    {
+        get_or_create_daily_log($this->pdo, 'user-1', '2026-05-09', [
+            'wake_time' => '07:15:00',
+            'sleep_time' => '22:10:00',
+        ]);
+
+        $dailyLog = get_or_create_daily_log($this->pdo, 'user-1', '2026-05-10');
+
+        $this->assertSame('07:15:00', $dailyLog['wake_time']);
+        $this->assertSame('22:10:00', $dailyLog['sleep_time']);
+    }
+
+    public function testUpdatingTodaySleepAndFutureTimesPreservesTodayWakeAndSeedsTomorrow(): void
+    {
+        get_or_create_daily_log($this->pdo, 'user-1', '2026-05-10', [
+            'wake_time' => '08:00:00',
+            'sleep_time' => '23:00:00',
+        ]);
+        get_or_create_daily_log($this->pdo, 'user-1', '2026-05-12', [
+            'wake_time' => '08:00:00',
+            'sleep_time' => '23:00:00',
+        ]);
+
+        $result = update_today_sleep_and_future_daily_log_times(
+            $this->pdo,
+            'user-1',
+            '2026-05-10',
+            '06:30:00',
+            '22:15:00',
+        );
+
+        $this->assertSame('08:00:00', $result['today_daily_log']['wake_time']);
+        $this->assertSame('22:15:00', $result['today_daily_log']['sleep_time']);
+        $this->assertSame('06:30:00', $result['future_defaults']['wake_time']);
+        $this->assertSame('22:15:00', $result['future_defaults']['sleep_time']);
+
+        $tomorrow = find_daily_log_by_user_and_date(
+            $this->pdo,
+            'user-1',
+            '2026-05-11',
+        );
+        $later = find_daily_log_by_user_and_date(
+            $this->pdo,
+            'user-1',
+            '2026-05-12',
+        );
+        $futureCreated = get_or_create_daily_log(
+            $this->pdo,
+            'user-1',
+            '2026-05-13',
+        );
+
+        $this->assertNotNull($tomorrow);
+        $this->assertSame('06:30:00', $tomorrow['wake_time']);
+        $this->assertSame('22:15:00', $tomorrow['sleep_time']);
+        $this->assertNotNull($later);
+        $this->assertSame('06:30:00', $later['wake_time']);
+        $this->assertSame('22:15:00', $later['sleep_time']);
+        $this->assertSame('06:30:00', $futureCreated['wake_time']);
+        $this->assertSame('22:15:00', $futureCreated['sleep_time']);
+    }
+
     private function countDailyLogs(): int
     {
         return (int) $this->pdo

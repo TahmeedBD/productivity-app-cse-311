@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../src/daily_logs/helpers.php';
+require_once __DIR__ . '/../src/daily_logs/schedule.php';
 require_once __DIR__ . '/../src/daily_logs/service.php';
 require_once __DIR__ . '/../src/daily_logs/today.php';
 use PHPUnit\Framework\TestCase;
@@ -71,6 +72,74 @@ final class DailyLogEndpointTest extends TestCase
             $secondResponse['body']['daily_log']['id'],
         );
         $this->assertSame(1, $this->countDailyLogs());
+    }
+
+    public function testScheduleResponseReturnsTodayAndFutureDefaults(): void
+    {
+        build_today_daily_log_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            '2026-05-09',
+        );
+
+        $response = build_daily_log_schedule_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            '2026-05-09',
+        );
+
+        $this->assertSame(200, $response['status']);
+        $this->assertTrue($response['body']['ok']);
+        $this->assertSame(
+            '2026-05-09',
+            $response['body']['today_daily_log']['date'],
+        );
+        $this->assertSame(
+            '08:00:00',
+            $response['body']['future_defaults']['wake_time'],
+        );
+        $this->assertSame(
+            '23:00:00',
+            $response['body']['future_defaults']['sleep_time'],
+        );
+    }
+
+    public function testUpdateScheduleResponsePreservesTodayWakeAndUpdatesFutureDefaults(): void
+    {
+        build_today_daily_log_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            '2026-05-10',
+        );
+
+        $response = build_update_daily_log_schedule_response(
+            $this->pdo,
+            ['id' => 'user-1'],
+            [
+                'wake_time' => '06:45',
+                'sleep_time' => '22:05',
+            ],
+            '2026-05-10',
+        );
+
+        $this->assertSame(200, $response['status']);
+        $this->assertTrue($response['body']['ok']);
+        $this->assertSame(
+            '08:00:00',
+            $response['body']['today_daily_log']['wake_time'],
+        );
+        $this->assertSame(
+            '22:05:00',
+            $response['body']['today_daily_log']['sleep_time'],
+        );
+        $this->assertSame(
+            '06:45:00',
+            $response['body']['future_defaults']['wake_time'],
+        );
+        $this->assertSame(
+            '22:05:00',
+            $response['body']['future_defaults']['sleep_time'],
+        );
     }
 
     private function countDailyLogs(): int
